@@ -443,3 +443,88 @@ h1 {
 p {
     margin: 5px 0;
 }
+
+/* Mobile Optimizations */
+@media (max-width: 600px) {
+    #info h1 {
+        font-size: 1.2rem;
+        margin-bottom: 2px;
+    }
+
+    #info p {
+        font-size: 0.8rem;
+        margin: 2px 0;
+    }
+
+    #info p[data-t="controls"] {
+        display: none;
+    }
+
+    .hud-controls {
+        gap: 0.5rem;
+        margin-top: 5px;
+    }
+
+    .icon-btn {
+        font-size: 1.2rem;
+        padding: 4px 8px;
+    }
+
+    .lang-switcher {
+        font-size: 0.8rem;
+        padding: 3px 6px;
+    }
+
+    #touch-controls {
+        bottom: 20px;
+        gap: 5px;
+    }
+
+    .touch-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+
+    .touch-row {
+        gap: 5px;
+    }
+
+    #menu {
+        padding: 1rem;
+        width: 80%;
+    }
+
+    #menu h1 {
+        font-size: 1.5rem;
+    }
+
+    #shop {
+        padding: 1rem;
+        width: 95%;
+    }
+
+    .shop-tabs button {
+        padding: 6px 12px;
+        font-size: 0.9rem;
+    }
+
+    #skin-preview-container {
+        height: 150px;
+    }
+
+    .skin-item, .bg-item {
+        padding: 5px;
+    }
+
+    .skin-item h3, .bg-item h3 {
+        font-size: 0.75rem;
+    }
+
+    .notification {
+        padding: 10px 15px;
+        font-size: 0.8rem;
+        bottom: 10px;
+        right: 10px;
+    }
+}
