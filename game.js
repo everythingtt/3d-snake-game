@@ -15,7 +15,6 @@ const TRANSLATIONS = {
         controls: "Use Arrow Keys to move",
         score: "Score",
         high: "High",
-        coins: "Coins",
         start_game: "Start Game",
         open_shop: "Open Shop",
         skins: "Skins",
@@ -49,7 +48,6 @@ const TRANSLATIONS = {
         controls: "استخدم مفاتيح الأسهم للتحرك",
         score: "النتيجة",
         high: "الأعلى",
-        coins: "العملات",
         start_game: "ابدأ اللعبة",
         open_shop: "افتح المتجر",
         skins: "الأشكال",
@@ -83,7 +81,6 @@ const TRANSLATIONS = {
         controls: "使用方向键移动",
         score: "分数",
         high: "最高分",
-        coins: "金币",
         start_game: "开始游戏",
         open_shop: "打开商店",
         skins: "皮肤",
@@ -1336,25 +1333,7 @@ function initShopPreview() {
     shopCurrentBgId = currentBgId;
     updateShopPreviewBg();
 
-    const list = document.getElementById('skin-list');
-    list.innerHTML = '';
-    SKINS.forEach(skin => {
-        const item = document.createElement('div');
-        item.className = `skin-item ${ownedSkins.includes(skin.id) ? '' : 'locked'} ${currentSkinId === skin.id ? 'selected' : ''}`;
-        item.innerHTML = `<h3>${skin.name}</h3><div class="price">${ownedSkins.includes(skin.id) ? 'OWNED' : skin.price + ' Coins'}</div>`;
-        item.onclick = () => selectSkin(skin);
-        list.appendChild(item);
-    });
-
-    const bgList = document.getElementById('bg-list');
-    bgList.innerHTML = '';
-    BACKGROUNDS.forEach(bg => {
-        const item = document.createElement('div');
-        item.className = `bg-item ${ownedBgs.includes(bg.id) ? '' : 'locked'} ${currentBgId === bg.id ? 'selected' : ''}`;
-        item.innerHTML = `<h3>${bg.name}</h3><div class="price">${ownedBgs.includes(bg.id) ? 'OWNED' : bg.price + ' Coins'}</div>`;
-        item.onclick = () => selectBg(bg);
-        bgList.appendChild(item);
-    });
+    updateShopList();
 }
 
 function selectSkin(skin) {
@@ -1725,6 +1704,7 @@ document.getElementById('shop-btn').onclick = () => {
     document.getElementById('shop-overlay').style.display = 'flex';
     audioManager.init();
     if (!shopRenderer) initShopPreview();
+    updateShopList();
     updateShopPreview();
     updateShopPreviewBg(); // Ensure bg is correct when opening
     audioManager.updateMusicTheme(shopCurrentBgId || currentBgId); // Play shop bg music
