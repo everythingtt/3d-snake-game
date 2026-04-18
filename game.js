@@ -1,0 +1,1454 @@
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+
+// Game constants
+const GRID_SIZE = 20;
+const INITIAL_SNAKE_LENGTH = 3;
+const INITIAL_MOVE_INTERVAL = 200;
+const MIN_MOVE_INTERVAL = 110;
+
+// Skins configuration
+const SKINS = [
+    { id: 'classic', name: 'Classic Green', head: 0x00ff00, body: 0x008800, price: 0 },
+    { id: 'neon', name: 'Neon Blue', head: 0x00ffff, body: 0x0000ff, price: 50 },
+    { id: 'lava', name: 'Lava Flow', head: 0xff4400, body: 0x880000, price: 100 },
+    { id: 'gold', name: 'Golden Midas', head: 0xffff00, body: 0xaa8800, price: 250 },
+    { id: 'void', name: 'Void Walker', head: 0xff00ff, body: 0x440044, price: 500 },
+    { id: 'matrix', name: 'Matrix Code', head: 0x00ff00, body: 0x003300, emissive: 0x00ff00, price: 1000 }
+];
+
+const BACKGROUNDS = [
+    { 
+        id: 'space', name: 'Deep Space', color: 0x000000, stars: true, grid: 0x444444, fog: 0x000000, envType: 'planets', price: 0,
+        music: { type: 'triangle', sequence: [261.63, 329.63, 392.00, 523.25], speed: 0.25 }
+    },
+    { 
+        id: 'neon', name: 'Neon City', color: 0x000022, stars: false, grid: 0x00ffff, fog: 0x000044, envType: 'cubes', price: 100,
+        music: { type: 'square', sequence: [440, 349.23, 392, 261.63], speed: 0.15 }
+    },
+    { 
+        id: 'sunset', name: 'Sunset Grid', color: 0x220022, stars: false, grid: 0xff00ff, fog: 0x440044, envType: 'sun', price: 200,
+        music: { type: 'sawtooth', sequence: [196.00, 220.00, 261.63, 293.66], speed: 0.5 }
+    },
+    { 
+        id: 'matrix', name: 'Matrix Void', color: 0x000500, stars: true, grid: 0x00ff00, fog: 0x001100, envType: 'code', price: 500,
+        music: { type: 'sine', sequence: [880, 987.77, 1046.50, 1318.51], speed: 0.1 }
+    },
+    { 
+        id: 'hell', name: 'Hellscape', color: 0x220000, stars: false, grid: 0xff4400, fog: 0x440000, envType: 'lava', price: 300,
+        music: { type: 'sawtooth', sequence: [65.41, 73.42, 82.41, 61.74], speed: 1.0 }
+    },
+    { 
+        id: 'blackhole', name: 'Event Horizon', color: 0x000000, stars: true, grid: 0x333333, fog: 0x110022, envType: 'blackhole', price: 800,
+        music: { type: 'sine', sequence: [110, 116.54, 123.47, 130.81], speed: 0.2, random: true }
+    },
+    { 
+        id: 'mystery', name: 'Mystery Void', color: 0x111111, stars: true, grid: 0xffffff, fog: 0x222222, envType: 'custom', price: 1000,
+        music: { type: 'triangle', sequence: [440, 523.25, 659.25, 783.99], speed: 0.2 }
+    }
+];
+
+// Notification Manager
+const Notifications = {
+    show(message, type = 'error') {
+        const container = document.getElementById('notification-container');
+        if (!container) return;
+
+        const notif = document.createElement('div');
+        notif.className = `notification ${type}`;
+        notif.innerText = `> ${message}`;
+        container.appendChild(notif);
+
+        // Auto remove
+        setTimeout(() => {
+            notif.style.opacity = '0';
+            setTimeout(() => notif.remove(), 300);
+        }, 4000);
+
+        if (type === 'error') this.triggerGlitch();
+    },
+    triggerGlitch() {
+        const overlay = document.getElementById('glitch-overlay');
+        if (!overlay) return;
+        overlay.style.display = 'block';
+        audioManager.playErrorSound();
+        setTimeout(() => {
+            overlay.style.display = 'none';
+        }, 500);
+    }
+};
+
+// Modding Framework
+const ModManager = {
+    mods: [],
+    assets: new Map(), // Store loaded textures/models for mods
+
+    async loadMods() {
+        try {
+            const response = await fetch('mods/manifest.json').catch(e => ({ ok: false }));
+            if (!response.ok) {
+                if (response.status === 404) console.log('Mod manifest not found (404)');
+                return;
+            }
+            
+            const manifest = await response.json();
+            for (const modFolder of manifest.mods) {
+                await this.loadMod(modFolder);
+            }
+            updateShopList();
+        } catch (e) {
+            console.log('No mods found or error loading manifest.');
+        }
+    },
+
+    async loadMod(folder) {
+        try {
+            const basePath = `mods/${folder}/`;
+            const res = await fetch(`${basePath}mod.json`);
+            if (!res.ok) {
+                Notifications.show(`SIGNAL LOST: Failed to load mod config for "${folder}" (${res.status})`, 'warning');
+                return;
+            }
+            const modData = await res.json();
+            
+            if (modData.skins) {
+                for (const skin of modData.skins) {
+                    const skinId = `mod_${folder}_${skin.id}`;
+                    
+                    try {
+                        let headTexture = null;
+                        let bodyTexture = null;
+                        if (skin.headTexture) headTexture = await textureLoader.loadAsync(`${basePath}${skin.headTexture}`).catch(() => null);
+                        if (skin.bodyTexture) bodyTexture = await textureLoader.loadAsync(`${basePath}${skin.bodyTexture}`).catch(() => null);
+                        
+                        if (skin.headTexture && !headTexture) Notifications.show(`DATA CORRUPTION: Texture 404 - ${skin.headTexture}`, 'warning');
+                        if (skin.bodyTexture && !bodyTexture) Notifications.show(`DATA CORRUPTION: Texture 404 - ${skin.bodyTexture}`, 'warning');
+
+                        if (headTexture || bodyTexture) {
+                            this.assets.set(skinId, { headTexture, bodyTexture });
+                        }
+
+                        SKINS.push({
+                        id: skinId,
+                        name: `[MOD] ${skin.name}`,
+                        head: skin.headColor ? parseInt(skin.headColor, 16) : 0xffffff,
+                        body: skin.bodyColor ? parseInt(skin.bodyColor, 16) : 0xffffff,
+                        headTexture: skin.headTexture, // Store for 404 checks
+                        bodyTexture: skin.bodyTexture,
+                        emissive: skin.emissiveColor ? parseInt(skin.emissiveColor, 16) : null,
+                        emissiveIntensity: skin.emissiveIntensity || 1.0,
+                        shininess: skin.shininess || 30,
+                        opacity: skin.opacity || 1.0,
+                        transparent: skin.opacity < 1.0,
+                        price: skin.price || 0,
+                        isMod: true
+                    });
+                    } catch (e) {
+                        Notifications.show(`Error loading assets for skin: ${skin.name}`);
+                    }
+                }
+            }
+            
+            if (modData.backgrounds) {
+                for (const bg of modData.backgrounds) {
+                    const bgId = `mod_${folder}_${bg.id}`;
+                    
+                    try {
+                        let customModel = null;
+                        let envTexture = null;
+                        
+                        if (bg.modelPath) {
+                            customModel = await gltfLoader.loadAsync(`${basePath}Background/Models/${bg.modelPath}`)
+                                .then(gltf => gltf.scene)
+                                .catch(() => {
+                                    Notifications.show(`VOID ERROR: Model 404 - ${bg.modelPath}`, 'warning');
+                                    return null;
+                                });
+                        }
+                        if (bg.texturePath) {
+                            envTexture = await textureLoader.loadAsync(`${basePath}Background/Textures/${bg.texturePath}`)
+                                .catch(() => {
+                                    Notifications.show(`DATA CORRUPTION: Texture 404 - ${bg.texturePath}`, 'warning');
+                                    return null;
+                                });
+                        }
+
+                        if (customModel || envTexture) {
+                            this.assets.set(bgId, { customModel, envTexture });
+                        }
+
+                        // Parse modded music if provided
+                        let modMusic = { type: 'triangle', sequence: [440, 523.25, 659.25, 783.99], speed: 0.2 };
+                        if (bg.music) {
+                            modMusic = {
+                                type: bg.music.type || 'triangle',
+                                sequence: bg.music.sequence || [440, 523.25, 659.25, 783.99],
+                                speed: bg.music.speed || 0.2,
+                                random: bg.music.random || false,
+                                externalUrl: bg.music.fileName ? `${basePath}Audio/Music/${bg.music.fileName}` : null
+                            };
+                        }
+
+                        BACKGROUNDS.push({
+                            id: bgId,
+                            name: `[MOD] ${bg.name}`,
+                            color: parseInt(bg.color, 16),
+                            stars: bg.stars || false,
+                            starSize: bg.starSize || 0.1,
+                            starColor: bg.starColor ? parseInt(bg.starColor, 16) : 0xffffff,
+                            grid: parseInt(bg.gridColor, 16),
+                            gridOpacity: bg.gridOpacity || 1.0,
+                            fog: parseInt(bg.fogColor, 16),
+                            ambientLightColor: bg.ambientLightColor ? parseInt(bg.ambientLightColor, 16) : 0x404040,
+                            ambientLightIntensity: bg.ambientLightIntensity || 1.0,
+                            pointLightColor: bg.pointLightColor ? parseInt(bg.pointLightColor, 16) : 0xffffff,
+                            pointLightIntensity: bg.pointLightIntensity || 1.0,
+                            particleColor: bg.particleColor ? parseInt(bg.particleColor, 16) : 0xff0000,
+                            texturePath: bg.texturePath, // Store for 404 checks
+                            envType: bg.envType || 'custom',
+                            price: bg.price || 0,
+                            isMod: true,
+                            music: modMusic,
+                            sfx: bg.sfx ? {
+                                eat: bg.sfx.eat ? `${basePath}Audio/SFX/${bg.sfx.eat}` : null,
+                                coin: bg.sfx.coin ? `${basePath}Audio/SFX/${bg.sfx.coin}` : null,
+                                gameover: bg.sfx.gameover ? `${basePath}Audio/SFX/${bg.sfx.gameover}` : null
+                            } : null
+                        });
+
+                    // Pre-load modded SFX if specified
+                    if (bg.sfx) {
+                        if (bg.sfx.eat) await audioManager.loadExternalAudio(`${basePath}Audio/SFX/${bg.sfx.eat}`);
+                        if (bg.sfx.coin) await audioManager.loadExternalAudio(`${basePath}Audio/SFX/${bg.sfx.coin}`);
+                        if (bg.sfx.gameover) await audioManager.loadExternalAudio(`${basePath}Audio/SFX/${bg.sfx.gameover}`);
+                    }
+                    } catch (e) {
+                        Notifications.show(`Error loading assets for bg: ${bg.name}`);
+                    }
+                }
+            }
+            
+            this.mods.push({ folder, ...modData });
+            console.log(`Successfully loaded mod: ${modData.name}`);
+        } catch (e) {
+            console.error(`Failed to load mod from ${folder}:`, e);
+            Notifications.show(`MOD COLLAPSE: Critical error loading "${folder}"`, 'error');
+        }
+    }
+};
+
+// Anti-cheat / Security Manager
+const Security = {
+    _key: 'snake_secret_salt',
+    obfuscate(value) {
+        const str = String(value);
+        let result = '';
+        for (let i = 0; i < str.length; i++) {
+            result += String.fromCharCode(str.charCodeAt(i) ^ this._key.charCodeAt(i % this._key.length));
+        }
+        return btoa(result);
+    },
+    deobfuscate(data) {
+        if (!data) return null;
+        try {
+            const str = atob(data);
+            let result = '';
+            for (let i = 0; i < str.length; i++) {
+                result += String.fromCharCode(str.charCodeAt(i) ^ this._key.charCodeAt(i % this._key.length));
+            }
+            return result;
+        } catch (e) { return null; }
+    },
+    save(key, value) {
+        localStorage.setItem(key, this.obfuscate(value));
+    },
+    load(key, defaultValue) {
+        const data = localStorage.getItem(key);
+        const val = this.deobfuscate(data);
+        return val !== null ? (isNaN(val) ? (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{')) ? val : val) : parseInt(val)) : defaultValue;
+    },
+    validateMove(lastTime, interval) {
+        const now = Date.now();
+        // Allow a small 10ms grace period for browser timing jitter
+        if (now - lastTime < interval - 10) {
+            console.warn('Speed hack detected!');
+            return false;
+        }
+        return true;
+    },
+    checkIntegrity(score, coins) {
+        // Simple internal consistency check
+        // Check if values were modified by console directly
+        if (this._lastScore !== undefined && score < this._lastScore) return false;
+        if (this._lastCoins !== undefined && coins < this._lastCoins) return false;
+        this._lastScore = score;
+        this._lastCoins = coins;
+        return true;
+    }
+};
+
+// Game state
+let snake = [];
+let direction = new THREE.Vector3(1, 0, 0);
+let nextDirection = new THREE.Vector3(1, 0, 0);
+let food = null;
+let coin = null;
+let score = 0;
+let highScore = Security.load('snake3d_highscore_secure', 0);
+let coins = Security.load('snake3d_coins_secure', 0);
+let ownedSkins = JSON.parse(Security.load('snake3d_owned_skins_secure', '["classic"]'));
+let currentSkinId = Security.load('snake3d_current_skin_secure', 'classic');
+let ownedBgs = JSON.parse(Security.load('snake3d_owned_bgs_secure', '["space"]'));
+let currentBgId = Security.load('snake3d_current_bg_secure', 'space');
+let lastMoveTime = 0;
+let moveInterval = INITIAL_MOVE_INTERVAL;
+let gameOver = false;
+let gameStarted = false;
+let particles = [];
+let decorativeObjects = [];
+let cheaterDetected = false;
+let starfield = null;
+
+// Audio setup
+class AudioManager {
+    constructor() {
+        this.ctx = null;
+        this.masterGain = null;
+        this.musicLoopId = null;
+        this.currentMusicConfig = null;
+        this.externalMusicSource = null;
+        this.externalAudioBuffers = new Map(); // Store decoded audio files
+    }
+
+    init() {
+        if (this.ctx) return;
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.connect(this.ctx.destination);
+        this.masterGain.gain.value = 0.2;
+    }
+
+    async loadExternalAudio(url) {
+        if (!this.ctx) this.init();
+        if (this.externalAudioBuffers.has(url)) return this.externalAudioBuffers.get(url);
+        
+        try {
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+            this.externalAudioBuffers.set(url, audioBuffer);
+            return audioBuffer;
+        } catch (e) {
+            console.error('Failed to load external audio:', url, e);
+            return null;
+        }
+    }
+
+    playExternalSound(url) {
+        if (!this.ctx || !this.externalAudioBuffers.has(url)) return false;
+        
+        const source = this.ctx.createBufferSource();
+        source.buffer = this.externalAudioBuffers.get(url);
+        source.connect(this.masterGain);
+        source.start(0);
+        return true;
+    }
+
+    updateMusicTheme(bgId) {
+        const bg = BACKGROUNDS.find(b => b.id === bgId) || BACKGROUNDS[0];
+        if (this.currentMusicConfig === bg.music) return;
+        
+        this.currentMusicConfig = bg.music;
+        this.startBackgroundMusic();
+    }
+
+    playEatSound() {
+        const bg = BACKGROUNDS.find(b => b.id === currentBgId);
+        if (bg?.isMod && bg.sfx?.eat && this.playExternalSound(bg.sfx.eat)) return;
+
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.1);
+    }
+
+    playCoinSound() {
+        const bg = BACKGROUNDS.find(b => b.id === currentBgId);
+        if (bg?.isMod && bg.sfx?.coin && this.playExternalSound(bg.sfx.coin)) return;
+
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1760, this.ctx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.1);
+    }
+
+    playErrorSound() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(10, this.ctx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.3);
+    }
+
+    playGameOverSound() {
+        const bg = BACKGROUNDS.find(b => b.id === currentBgId);
+        if (bg?.isMod && bg.sfx?.gameover && this.playExternalSound(bg.sfx.gameover)) return;
+
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(50, this.ctx.currentTime + 0.5);
+        gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.5);
+    }
+
+    stopBackgroundMusic() {
+        if (this.musicLoopId) clearTimeout(this.musicLoopId);
+        if (this.externalMusicSource) {
+            this.externalMusicSource.stop();
+            this.externalMusicSource = null;
+        }
+    }
+
+    async startBackgroundMusic() {
+        if (!this.ctx) return;
+        this.stopBackgroundMusic();
+        
+        const config = this.currentMusicConfig || BACKGROUNDS[0].music;
+        
+        // Handle external modded music file
+        if (config.externalUrl) {
+            const buffer = await this.loadExternalAudio(config.externalUrl);
+            if (buffer) {
+                this.externalMusicSource = this.ctx.createBufferSource();
+                this.externalMusicSource.buffer = buffer;
+                this.externalMusicSource.loop = true;
+                this.externalMusicSource.connect(this.masterGain);
+                this.externalMusicSource.start(0);
+                return;
+            }
+        }
+
+        // Fallback to procedural music
+        const playNote = (freq, time, duration) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = config.type;
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.1, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+            osc.connect(gain);
+            gain.connect(this.masterGain);
+            osc.start(time);
+            osc.stop(time + duration);
+        };
+
+        const sequence = config.sequence;
+        let time = this.ctx.currentTime;
+        const loop = () => {
+            if (this.currentMusicConfig !== config) return; 
+            
+            sequence.forEach((freq, i) => {
+                const f = config.random ? freq * (0.9 + Math.random() * 0.2) : freq;
+                playNote(f, time + i * config.speed, config.speed * 0.8);
+            });
+            time += sequence.length * config.speed;
+            this.musicLoopId = setTimeout(loop, sequence.length * config.speed * 1000);
+        };
+        loop();
+    }
+}
+
+const audioManager = new AudioManager();
+
+// Texture & Model Loaders
+const textureLoader = new THREE.TextureLoader();
+const gltfLoader = new GLTFLoader();
+
+// Glitch Fallback Texture (Classic Magenta/Black Checkerboard)
+function createGlitchTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ff00ff';
+    ctx.fillRect(0, 0, 64, 64);
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, 32, 32);
+    ctx.fillRect(32, 32, 32, 32);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.magFilter = THREE.NearestFilter;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 2);
+    return texture;
+}
+const glitchTexture = createGlitchTexture();
+
+const planetTextures = {
+    earthDay: textureLoader.load('textures/earth/earth-day.png'),
+    earthNight: textureLoader.load('textures/earth/earth-night.png'),
+    venus: textureLoader.load('textures/venus/venus.png')
+};
+
+// Three.js setup
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.getElementById('game-container').appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+camera.position.set(0, 10, 20);
+camera.lookAt(0, 0, 0);
+controls.update();
+
+// Lights
+const ambientLight = new THREE.AmbientLight(0x404040);
+scene.add(ambientLight);
+const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+pointLight.position.set(10, 10, 10);
+scene.add(pointLight);
+
+// Grid helper
+const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x888888, 0x444444);
+scene.add(gridHelper);
+
+// Starfield background
+function createStarfield() {
+    if (starfield) scene.remove(starfield);
+    const starGeometry = new THREE.BufferGeometry();
+    const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1 });
+    const starVertices = [];
+    for (let i = 0; i < 2000; i++) {
+        const x = (Math.random() - 0.5) * 500;
+        const y = (Math.random() - 0.5) * 500;
+        const z = (Math.random() - 0.5) * 500;
+        starVertices.push(x, y, z);
+    }
+    starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+    starfield = new THREE.Points(starGeometry, starMaterial);
+    scene.add(starfield);
+}
+
+function updateBackground() {
+    const bg = BACKGROUNDS.find(b => b.id === currentBgId) || BACKGROUNDS[0];
+    scene.background = new THREE.Color(bg.color);
+    scene.fog = new THREE.Fog(bg.fog, 20, 100);
+    
+    // Advanced Lighting Controls
+    ambientLight.color.set(bg.ambientLightColor || 0x404040);
+    ambientLight.intensity = bg.ambientLightIntensity !== undefined ? bg.ambientLightIntensity : 1.0;
+    pointLight.color.set(bg.pointLightColor || 0xffffff);
+    pointLight.intensity = bg.pointLightIntensity !== undefined ? bg.pointLightIntensity : 1.0;
+
+    gridHelper.material.color.set(bg.grid);
+    gridHelper.material.opacity = bg.gridOpacity !== undefined ? bg.gridOpacity : 1.0;
+    gridHelper.material.transparent = gridHelper.material.opacity < 1.0;
+    
+    if (bg.stars) {
+        if (!starfield) createStarfield();
+        starfield.visible = true;
+        // Apply star tweaks
+        starfield.material.size = bg.starSize || 0.1;
+        starfield.material.color.set(bg.starColor || 0xffffff);
+    } else if (starfield) {
+        starfield.visible = false;
+    }
+
+    // Clear old decorative objects
+    decorativeObjects.forEach(obj => scene.remove(obj.mesh));
+    decorativeObjects = [];
+
+    // Create new decorative objects based on environment
+    switch (bg.envType) {
+        case 'planets':
+            // Earth with Day/Night Shader
+            const earthGeom = new THREE.SphereGeometry(8, 64, 64);
+            const earthMat = new THREE.ShaderMaterial({
+                uniforms: {
+                    dayTexture: { value: planetTextures.earthDay },
+                    nightTexture: { value: planetTextures.earthNight },
+                    sunDirection: { value: new THREE.Vector3(1, 0.2, 1).normalize() }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    varying vec3 vNormal;
+                    varying vec3 vSunDirection;
+                    void main() {
+                        vUv = uv;
+                        vNormal = normalize(normalMatrix * normal);
+                        vSunDirection = normalize(sunDirection);
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform sampler2D dayTexture;
+                    uniform sampler2D nightTexture;
+                    varying vec2 vUv;
+                    varying vec3 vNormal;
+                    varying vec3 vSunDirection;
+                    void main() {
+                        float intensity = dot(vNormal, vSunDirection);
+                        vec4 dayColor = texture2D(dayTexture, vUv);
+                        vec4 nightColor = texture2D(nightTexture, vUv);
+                        
+                        // Blend day and night based on light intensity
+                        float mixRatio = smoothstep(-0.2, 0.2, intensity);
+                        gl_FragColor = mix(nightColor, dayColor, mixRatio);
+                    }
+                `
+            });
+            const earth = new THREE.Mesh(earthGeom, earthMat);
+            earth.position.set(-40, 10, -40);
+            scene.add(earth);
+            decorativeObjects.push({ mesh: earth, rotationSpeed: 0.002 });
+
+            // Venus
+            const venusGeom = new THREE.SphereGeometry(6, 64, 64);
+            const venusMat = new THREE.MeshPhongMaterial({ 
+                map: planetTextures.venus,
+                emissive: 0x221100,
+                emissiveIntensity: 0.2,
+                shininess: 10
+            });
+            const venus = new THREE.Mesh(venusGeom, venusMat);
+            venus.position.set(40, -10, -30);
+            scene.add(venus);
+            decorativeObjects.push({ mesh: venus, rotationSpeed: 0.001 });
+
+            // Random extra asteroids/planets
+            for (let i = 0; i < 4; i++) {
+                const geometry = new THREE.SphereGeometry(Math.random() * 1.5 + 0.5, 16, 16);
+                const mesh = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial({ color: 0x888888 }));
+                mesh.position.set(
+                    (Math.random() - 0.5) * 150,
+                    (Math.random() - 0.5) * 150,
+                    (Math.random() - 0.5) * 150
+                );
+                if (mesh.position.length() < 30) mesh.position.multiplyScalar(2);
+                scene.add(mesh);
+                decorativeObjects.push({ mesh, rotationSpeed: Math.random() * 0.01 });
+            }
+            break;
+        case 'cubes':
+            for (let i = 0; i < 20; i++) {
+                const geometry = new THREE.BoxGeometry(2, 2, 2);
+                const material = new THREE.MeshPhongMaterial({ color: 0x00ffff, wireframe: true });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(
+                    (Math.random() - 0.5) * 100,
+                    Math.random() * 50,
+                    (Math.random() - 0.5) * 100
+                );
+                scene.add(mesh);
+                decorativeObjects.push({ mesh, rotationSpeed: Math.random() * 0.02 });
+            }
+            break;
+        case 'sun':
+            const sunGeom = new THREE.SphereGeometry(10, 32, 32);
+            const sunMat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+            const sunMesh = new THREE.Mesh(sunGeom, sunMat);
+            sunMesh.position.set(0, 0, -80);
+            scene.add(sunMesh);
+            decorativeObjects.push({ mesh: sunMesh, rotationSpeed: 0.001 });
+            break;
+        case 'code':
+            for (let i = 0; i < 50; i++) {
+                const geometry = new THREE.PlaneGeometry(0.5, 5);
+                const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.5 });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(
+                    (Math.random() - 0.5) * 100,
+                    Math.random() * 100,
+                    (Math.random() - 0.5) * 100
+                );
+                scene.add(mesh);
+                decorativeObjects.push({ mesh, speed: Math.random() * 0.5 + 0.1 });
+            }
+            break;
+        case 'lava':
+            for (let i = 0; i < 15; i++) {
+                const geometry = new THREE.SphereGeometry(Math.random() * 3 + 1, 8, 8);
+                const material = new THREE.MeshPhongMaterial({ color: 0xff4400, emissive: 0x441100 });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(
+                    (Math.random() - 0.5) * 100,
+                    -10,
+                    (Math.random() - 0.5) * 100
+                );
+                scene.add(mesh);
+                decorativeObjects.push({ mesh, floatSpeed: Math.random() * 0.05 + 0.02, initialY: -10 });
+            }
+            break;
+        case 'blackhole':
+            // Singularity
+            const singularity = new THREE.Mesh(
+                new THREE.SphereGeometry(15, 32, 32),
+                new THREE.MeshBasicMaterial({ color: 0x000000 })
+            );
+            singularity.position.set(0, 0, -100);
+            scene.add(singularity);
+            decorativeObjects.push({ mesh: singularity, rotationSpeed: 0.005 });
+
+            // Accretion Disk
+            const diskGeom = new THREE.TorusGeometry(25, 5, 2, 100);
+            const diskMat = new THREE.MeshBasicMaterial({ 
+                color: 0xffaa00, 
+                transparent: true, 
+                opacity: 0.8,
+                side: THREE.DoubleSide 
+            });
+            const disk = new THREE.Mesh(diskGeom, diskMat);
+            disk.position.set(0, 0, -100);
+            disk.rotation.x = Math.PI / 2.5;
+            scene.add(disk);
+            decorativeObjects.push({ mesh: disk, rotationSpeed: 0.02 });
+            
+            // Distant gravitational lens effect (glow)
+            const glowGeom = new THREE.SphereGeometry(30, 32, 32);
+            const glowMat = new THREE.MeshBasicMaterial({ 
+                color: 0x4400ff, 
+                transparent: true, 
+                opacity: 0.2,
+                side: THREE.BackSide 
+            });
+            const glow = new THREE.Mesh(glowGeom, glowMat);
+            glow.position.set(0, 0, -100);
+            scene.add(glow);
+            decorativeObjects.push({ mesh: glow, rotationSpeed: -0.01 });
+            break;
+        case 'custom':
+            const modAssets = ModManager.assets.get(currentBgId);
+            if (modAssets?.customModel) {
+                // Apply texture to model if specified
+                if (modAssets.envTexture) {
+                    modAssets.customModel.traverse(child => {
+                        if (child.isMesh) {
+                            child.material = new THREE.MeshPhongMaterial({ map: modAssets.envTexture });
+                        }
+                    });
+                }
+                
+                // Clone the pre-loaded model
+                for (let i = 0; i < 5; i++) {
+                    const mesh = modAssets.customModel.clone();
+                    mesh.position.set(
+                        (Math.random() - 0.5) * 100,
+                        (Math.random() - 0.5) * 50,
+                        (Math.random() - 0.5) * 100
+                    );
+                    mesh.scale.setScalar(2);
+                    scene.add(mesh);
+                    decorativeObjects.push({ mesh, rotationSpeed: 0.01 });
+                }
+            } else if (modAssets?.envTexture || BACKGROUNDS.find(b => b.id === currentBgId)?.texturePath) {
+                // Apply custom texture to planets
+                const tex = modAssets?.envTexture || glitchTexture;
+                for (let i = 0; i < 5; i++) {
+                    const geometry = new THREE.SphereGeometry(Math.random() * 3 + 1, 32, 32);
+                    const material = new THREE.MeshPhongMaterial({ map: tex });
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set((Math.random() - 0.5) * 100, (Math.random() - 0.5) * 100, (Math.random() - 0.5) * 100);
+                    scene.add(mesh);
+                    decorativeObjects.push({ mesh, rotationSpeed: 0.01 });
+                }
+            } else {
+                // Fallback mystery geom
+                const mysteryGeom = new THREE.IcosahedronGeometry(10, 1);
+                const mysteryMat = new THREE.MeshPhongMaterial({ color: 0xffffff, wireframe: true });
+                const mysteryMesh = new THREE.Mesh(mysteryGeom, mysteryMat);
+                mysteryMesh.position.set(0, 20, -50);
+                scene.add(mysteryMesh);
+                decorativeObjects.push({ mesh: mysteryMesh, rotationSpeed: 0.01 });
+            }
+            break;
+    }
+}
+updateBackground();
+
+// Particles
+function createParticle(pos, color) {
+    const geometry = new THREE.SphereGeometry(0.1, 8, 8);
+    const material = new THREE.MeshBasicMaterial({ color: color });
+    const particle = new THREE.Mesh(geometry, material);
+    particle.position.copy(pos);
+    const velocity = new THREE.Vector3((Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2);
+    scene.add(particle);
+    particles.push({ mesh: particle, velocity, life: 1.0 });
+}
+
+function updateParticles() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.mesh.position.add(p.velocity);
+        p.life -= 0.02;
+        p.mesh.scale.set(p.life, p.life, p.life);
+        if (p.life <= 0) {
+            scene.remove(p.mesh);
+            particles.splice(i, 1);
+        }
+    }
+}
+
+// Materials
+const foodMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000, emissive: 0x440000 });
+const coinMaterial = new THREE.MeshPhongMaterial({ color: 0xffcc00, emissive: 0x443300 });
+const cubeGeometry = new THREE.BoxGeometry(0.9, 0.9, 0.9);
+
+function getSkinMaterials(skinId) {
+    const skin = SKINS.find(s => s.id === skinId) || SKINS[0];
+    const modAssets = ModManager.assets.get(skinId);
+    
+    // Check if texture was supposed to exist but failed (404)
+    const hTex = modAssets?.headTexture || (skin.isMod && skin.headTexture ? glitchTexture : null);
+    const bTex = modAssets?.bodyTexture || (skin.isMod && skin.bodyTexture ? glitchTexture : null);
+
+    return {
+        head: new THREE.MeshPhongMaterial({ 
+            color: skin.head, 
+            map: hTex,
+            emissive: skin.emissive || (skin.head & 0x333333),
+            emissiveIntensity: skin.emissiveIntensity || 1.0,
+            shininess: skin.shininess || 30,
+            opacity: skin.opacity || 1.0,
+            transparent: skin.transparent || false
+        }),
+        body: new THREE.MeshPhongMaterial({ 
+            color: skin.body,
+            map: bTex,
+            opacity: skin.opacity || 1.0,
+            transparent: skin.transparent || false,
+            shininess: skin.shininess || 30
+        })
+    };
+}
+
+function initGame() {
+    snake.forEach(segment => scene.remove(segment.mesh));
+    snake = [];
+    if (food) scene.remove(food.mesh);
+    food = null;
+    if (coin) scene.remove(coin.mesh);
+    coin = null;
+
+    const materials = getSkinMaterials(currentSkinId);
+    for (let i = 0; i < INITIAL_SNAKE_LENGTH; i++) {
+        const mesh = new THREE.Mesh(cubeGeometry, i === 0 ? materials.head : materials.body);
+        const pos = new THREE.Vector3(-i + 0.5, 0.5, 0.5);
+        mesh.position.copy(pos);
+        scene.add(mesh);
+        snake.push({ pos, mesh });
+    }
+
+    direction.set(1, 0, 0);
+    nextDirection.set(1, 0, 0);
+    score = 0;
+    moveInterval = INITIAL_MOVE_INTERVAL;
+    gameOver = false;
+    cheaterDetected = false;
+    Security._lastScore = 0;
+    Security._lastCoins = coins;
+    updateUI();
+    spawnFood();
+    spawnCoin();
+}
+
+function spawnFood() {
+    if (food) scene.remove(food.mesh);
+    const currentY = snake.length > 0 ? snake[0].pos.y : 0.5;
+    const pos = new THREE.Vector3(
+        Math.floor(Math.random() * GRID_SIZE) - GRID_SIZE / 2 + 0.5,
+        currentY,
+        Math.floor(Math.random() * GRID_SIZE) - GRID_SIZE / 2 + 0.5
+    );
+    if (snake.some(segment => segment.pos.distanceTo(pos) < 0.1) || (coin && coin.pos.distanceTo(pos) < 0.1)) {
+        spawnFood();
+        return;
+    }
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), foodMaterial);
+    mesh.position.copy(pos);
+    scene.add(mesh);
+    food = { pos, mesh };
+}
+
+function spawnCoin() {
+    if (coin) scene.remove(coin.mesh);
+    const currentY = snake.length > 0 ? snake[0].pos.y : 0.5;
+    const pos = new THREE.Vector3(
+        Math.floor(Math.random() * GRID_SIZE) - GRID_SIZE / 2 + 0.5,
+        currentY,
+        Math.floor(Math.random() * GRID_SIZE) - GRID_SIZE / 2 + 0.5
+    );
+    // Ensure coin doesn't spawn on snake or food
+    if (snake.some(segment => segment.pos.distanceTo(pos) < 0.1) || (food && food.pos.distanceTo(pos) < 0.1)) {
+        spawnCoin();
+        return;
+    }
+    // Spinning coin mesh (cylinder as a flat disk)
+    const geometry = new THREE.CylinderGeometry(0.35, 0.35, 0.1, 16);
+    const mesh = new THREE.Mesh(geometry, coinMaterial);
+    mesh.position.copy(pos);
+    mesh.rotation.x = Math.PI / 2; // Flat disk facing camera
+    scene.add(mesh);
+    coin = { pos, mesh };
+}
+
+function update() {
+    if (gameOver || !gameStarted || cheaterDetected) return;
+
+    const currentTime = Date.now();
+    if (currentTime - lastMoveTime < moveInterval - 10) return; // Basic rate check
+    
+    // Validate move timing (anti-speed hack)
+    if (lastMoveTime > 0 && !Security.validateMove(lastMoveTime, moveInterval)) {
+        endGame('Cheater! Speed manipulation detected.');
+        cheaterDetected = true;
+        return;
+    }
+    
+    // Check integrity of values
+    if (!Security.checkIntegrity(score, coins)) {
+        endGame('Cheater! Value tampering detected.');
+        cheaterDetected = true;
+        return;
+    }
+    
+    lastMoveTime = currentTime;
+
+    direction.copy(nextDirection);
+    const newHeadPos = snake[0].pos.clone().add(direction);
+    const limit = GRID_SIZE / 2;
+    if (Math.abs(newHeadPos.x) > limit || Math.abs(newHeadPos.y) > limit || Math.abs(newHeadPos.z) > limit) {
+        endGame();
+        return;
+    }
+    if (snake.some(segment => segment.pos.distanceTo(newHeadPos) < 0.1)) {
+        endGame();
+        return;
+    }
+
+    // Check food collision
+    const ateFood = newHeadPos.distanceTo(food.pos) < 0.1;
+    // Check coin collision
+    const ateCoin = coin && newHeadPos.distanceTo(coin.pos) < 0.1;
+
+    if (ateFood) {
+        // Growth: we add the head and DON'T remove the tail
+        score += 10;
+        // Coins are now separate, food only gives score
+        updateUI();
+        moveInterval = Math.max(MIN_MOVE_INTERVAL, INITIAL_MOVE_INTERVAL - Math.floor(score / 50) * 10);
+        audioManager.playEatSound();
+        const pColor = BACKGROUNDS.find(b => b.id === currentBgId)?.particleColor || 0xff0000;
+        for (let i = 0; i < 15; i++) createParticle(food.pos, pColor);
+        spawnFood();
+    } else if (ateCoin) {
+        // Coin collection: don't grow, but give coins
+        coins += 5; // Coins give more value now that they are separate
+        updateUI();
+        audioManager.playCoinSound();
+        const cColor = BACKGROUNDS.find(b => b.id === currentBgId)?.particleColor || 0xffcc00;
+        for (let i = 0; i < 15; i++) createParticle(coin.pos, cColor);
+        spawnCoin();
+        
+        // When eating a coin, we still need to move, so we remove the tail
+        const tail = snake.pop();
+        scene.remove(tail.mesh);
+    } else {
+        // Normal move: remove tail
+        const tail = snake.pop();
+        scene.remove(tail.mesh);
+    }
+
+    const materials = getSkinMaterials(currentSkinId);
+    const newHeadMesh = new THREE.Mesh(cubeGeometry, materials.head);
+    newHeadMesh.position.copy(newHeadPos);
+    scene.add(newHeadMesh);
+    if (snake.length > 1) snake[0].mesh.material = materials.body;
+    snake.unshift({ pos: newHeadPos, mesh: newHeadMesh });
+}
+
+function updateUI() {
+    document.getElementById('score').innerText = score;
+    document.getElementById('high-score').innerText = highScore;
+    document.getElementById('coins').innerText = coins;
+    document.getElementById('menu-high-score').innerText = highScore;
+    document.getElementById('menu-coins').innerText = coins;
+    
+    // Secure saving
+    Security.save('snake3d_coins_secure', coins);
+}
+
+function endGame(reason = null) {
+    gameOver = true;
+    audioManager.playGameOverSound();
+    
+    if (reason) {
+        alert(reason);
+        // If they cheated, reset their coins and highscore
+        if (cheaterDetected) {
+            coins = 0;
+            highScore = 0;
+            Security.save('snake3d_coins_secure', 0);
+            Security.save('snake3d_highscore_secure', 0);
+            updateUI();
+        }
+    } else {
+        // Normal game over: Update high score
+        if (score > highScore) {
+            highScore = score;
+            Security.save('snake3d_highscore_secure', highScore);
+        }
+    }
+    
+    updateUI();
+    setTimeout(() => {
+        document.getElementById('overlay').style.display = 'flex';
+        gameStarted = false;
+        cheaterDetected = false; // Reset for next run
+    }, 1000);
+}
+
+// Shop Logic
+let shopScene, shopCamera, shopRenderer, shopSnake, shopGrid, shopStars;
+let shopDecorativeObjects = [];
+let shopCurrentBgId = null;
+
+function initShopPreview() {
+    const container = document.getElementById('skin-preview-container');
+    if (!container) return; // Guard for early calls
+
+    shopScene = new THREE.Scene();
+    shopCamera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+    shopRenderer = new THREE.WebGLRenderer({ antialias: true });
+    shopRenderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(shopRenderer.domElement);
+
+    const light = new THREE.PointLight(0xffffff, 1, 100);
+    light.position.set(5, 5, 5);
+    shopScene.add(light);
+    shopScene.add(new THREE.AmbientLight(0x404040));
+    shopCamera.position.set(0, 2, 5);
+    shopCamera.lookAt(0, 0, 0);
+
+    // Initial shop background state
+    shopCurrentBgId = currentBgId;
+    updateShopPreviewBg();
+
+    const list = document.getElementById('skin-list');
+    list.innerHTML = '';
+    SKINS.forEach(skin => {
+        const item = document.createElement('div');
+        item.className = `skin-item ${ownedSkins.includes(skin.id) ? '' : 'locked'} ${currentSkinId === skin.id ? 'selected' : ''}`;
+        item.innerHTML = `<h3>${skin.name}</h3><div class="price">${ownedSkins.includes(skin.id) ? 'OWNED' : skin.price + ' Coins'}</div>`;
+        item.onclick = () => selectSkin(skin);
+        list.appendChild(item);
+    });
+
+    const bgList = document.getElementById('bg-list');
+    bgList.innerHTML = '';
+    BACKGROUNDS.forEach(bg => {
+        const item = document.createElement('div');
+        item.className = `bg-item ${ownedBgs.includes(bg.id) ? '' : 'locked'} ${currentBgId === bg.id ? 'selected' : ''}`;
+        item.innerHTML = `<h3>${bg.name}</h3><div class="price">${ownedBgs.includes(bg.id) ? 'OWNED' : bg.price + ' Coins'}</div>`;
+        item.onclick = () => selectBg(bg);
+        bgList.appendChild(item);
+    });
+}
+
+function selectSkin(skin) {
+    if (!ownedSkins.includes(skin.id)) {
+        if (coins >= skin.price) {
+            coins -= skin.price;
+            ownedSkins.push(skin.id);
+            Security.save('snake3d_owned_skins_secure', JSON.stringify(ownedSkins));
+            updateUI();
+            updateShopList();
+        } else {
+            alert('Not enough coins!');
+            return;
+        }
+    }
+    currentSkinId = skin.id;
+    Security.save('snake3d_current_skin_secure', currentSkinId);
+    updateShopList();
+    updateShopPreview();
+}
+
+function selectBg(bg) {
+    if (!ownedBgs.includes(bg.id)) {
+        if (coins >= bg.price) {
+            coins -= bg.price;
+            ownedBgs.push(bg.id);
+            Security.save('snake3d_owned_bgs_secure', JSON.stringify(ownedBgs));
+            updateUI();
+            updateShopList();
+        } else {
+            alert('Not enough coins!');
+            return;
+        }
+    }
+    currentBgId = bg.id;
+    shopCurrentBgId = bg.id; // Update shop preview background
+    Security.save('snake3d_current_bg_secure', currentBgId);
+    updateShopList();
+    updateBackground();
+    updateShopPreviewBg(); // Re-render shop background
+    audioManager.updateMusicTheme(bg.id); // Update music in real-time
+}
+
+function updateShopList() {
+    const skinList = document.getElementById('skin-list');
+    const bgList = document.getElementById('bg-list');
+    if (!skinList || !bgList) return;
+
+    skinList.innerHTML = '';
+    SKINS.forEach(skin => {
+        const item = document.createElement('div');
+        item.className = `skin-item ${ownedSkins.includes(skin.id) ? '' : 'locked'} ${currentSkinId === skin.id ? 'selected' : ''}`;
+        item.innerHTML = `<h3>${skin.name}</h3><div class="price">${ownedSkins.includes(skin.id) ? 'OWNED' : skin.price + ' Coins'}</div>`;
+        item.onclick = () => selectSkin(skin);
+        skinList.appendChild(item);
+    });
+
+    bgList.innerHTML = '';
+    BACKGROUNDS.forEach(bg => {
+        const item = document.createElement('div');
+        item.className = `bg-item ${ownedBgs.includes(bg.id) ? '' : 'locked'} ${currentBgId === bg.id ? 'selected' : ''}`;
+        item.innerHTML = `<h3>${bg.name}</h3><div class="price">${ownedBgs.includes(bg.id) ? 'OWNED' : bg.price + ' Coins'}</div>`;
+        item.onclick = () => selectBg(bg);
+        bgList.appendChild(item);
+    });
+}
+
+// Tab Switching
+document.getElementById('tab-skins').onclick = () => {
+    document.getElementById('tab-skins').classList.add('active');
+    document.getElementById('tab-backgrounds').classList.remove('active');
+    document.getElementById('skin-list').style.display = 'grid';
+    document.getElementById('bg-list').style.display = 'none';
+};
+
+document.getElementById('tab-backgrounds').onclick = () => {
+    document.getElementById('tab-backgrounds').classList.add('active');
+    document.getElementById('tab-skins').classList.remove('active');
+    document.getElementById('skin-list').style.display = 'none';
+    document.getElementById('bg-list').style.display = 'grid';
+};
+
+function updateShopPreview() {
+    if (shopSnake) shopScene.remove(shopSnake);
+    const group = new THREE.Group();
+    const materials = getSkinMaterials(currentSkinId);
+    for (let i = 0; i < 3; i++) {
+        const mesh = new THREE.Mesh(cubeGeometry, i === 0 ? materials.head : materials.body);
+        mesh.position.set(-i, 0, 0);
+        group.add(mesh);
+    }
+    shopSnake = group;
+    shopScene.add(shopSnake);
+}
+
+function updateShopPreviewBg() {
+    if (!shopScene) return;
+    const bg = BACKGROUNDS.find(b => b.id === (shopCurrentBgId || currentBgId)) || BACKGROUNDS[0];
+    shopScene.background = new THREE.Color(bg.color);
+    shopScene.fog = new THREE.Fog(bg.fog, 5, 20);
+    
+    // Update shop grid
+    if (shopGrid) shopScene.remove(shopGrid);
+    shopGrid = new THREE.GridHelper(10, 10, bg.grid, bg.grid);
+    shopGrid.position.y = -1;
+    shopScene.add(shopGrid);
+    
+    // Update shop stars
+    if (shopStars) shopScene.remove(shopStars);
+    if (bg.stars) {
+        const starGeometry = new THREE.BufferGeometry();
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1 });
+        const starVertices = [];
+        for (let i = 0; i < 500; i++) {
+            const x = (Math.random() - 0.5) * 100;
+            const y = (Math.random() - 0.5) * 100;
+            const z = (Math.random() - 0.5) * 100;
+            starVertices.push(x, y, z);
+        }
+        starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+        shopStars = new THREE.Points(starGeometry, starMaterial);
+        shopScene.add(shopStars);
+    }
+
+    // Update shop decorative objects
+    shopDecorativeObjects.forEach(obj => shopScene.remove(obj.mesh));
+    shopDecorativeObjects = [];
+
+    switch (bg.envType) {
+        case 'planets':
+            // Small Earth for Shop
+            const earthGeom = new THREE.SphereGeometry(1.5, 32, 32);
+            const earthMat = new THREE.ShaderMaterial({
+                uniforms: {
+                    dayTexture: { value: planetTextures.earthDay },
+                    nightTexture: { value: planetTextures.earthNight },
+                    sunDirection: { value: new THREE.Vector3(1, 0.2, 1).normalize() }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    varying vec3 vNormal;
+                    varying vec3 vSunDirection;
+                    void main() {
+                        vUv = uv;
+                        vNormal = normalize(normalMatrix * normal);
+                        vSunDirection = normalize(sunDirection);
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform sampler2D dayTexture;
+                    uniform sampler2D nightTexture;
+                    varying vec2 vUv;
+                    varying vec3 vNormal;
+                    varying vec3 vSunDirection;
+                    void main() {
+                        float intensity = dot(vNormal, vSunDirection);
+                        vec4 dayColor = texture2D(dayTexture, vUv);
+                        vec4 nightColor = texture2D(nightTexture, vUv);
+                        float mixRatio = smoothstep(-0.2, 0.2, intensity);
+                        gl_FragColor = mix(nightColor, dayColor, mixRatio);
+                    }
+                `
+            });
+            const earth = new THREE.Mesh(earthGeom, earthMat);
+            earth.position.set(-4, 2, -5);
+            shopScene.add(earth);
+            shopDecorativeObjects.push({ mesh: earth, rotationSpeed: 0.01 });
+
+            // Small Venus for Shop
+            const venus = new THREE.Mesh(
+                new THREE.SphereGeometry(1, 32, 32),
+                new THREE.MeshPhongMaterial({ map: planetTextures.venus })
+            );
+            venus.position.set(4, -1, -4);
+            shopScene.add(venus);
+            shopDecorativeObjects.push({ mesh: venus, rotationSpeed: 0.005 });
+            break;
+        case 'cubes':
+            for (let i = 0; i < 10; i++) {
+                const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+                const mesh = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial({ color: 0x00ffff, wireframe: true }));
+                mesh.position.set((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
+                shopScene.add(mesh);
+                shopDecorativeObjects.push({ mesh, rotationSpeed: 0.03 });
+            }
+            break;
+        case 'sun':
+            const sunMesh = new THREE.Mesh(new THREE.SphereGeometry(2, 16, 16), new THREE.MeshBasicMaterial({ color: 0xff00ff }));
+            sunMesh.position.set(0, 0, -10);
+            shopScene.add(sunMesh);
+            shopDecorativeObjects.push({ mesh: sunMesh, rotationSpeed: 0.01 });
+            break;
+        case 'code':
+            for (let i = 0; i < 20; i++) {
+                const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 1), new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.5 }));
+                mesh.position.set((Math.random() - 0.5) * 10, Math.random() * 10, (Math.random() - 0.5) * 10);
+                shopScene.add(mesh);
+                shopDecorativeObjects.push({ mesh, speed: 0.1 });
+            }
+            break;
+        case 'lava':
+            for (let i = 0; i < 10; i++) {
+                const mesh = new THREE.Mesh(new THREE.SphereGeometry(Math.random() * 0.5 + 0.2, 8, 8), new THREE.MeshPhongMaterial({ color: 0xff4400 }));
+                mesh.position.set((Math.random() - 0.5) * 10, -2, (Math.random() - 0.5) * 10);
+                shopScene.add(mesh);
+                shopDecorativeObjects.push({ mesh, floatSpeed: 0.02, initialY: -2 });
+            }
+            break;
+        case 'blackhole':
+            const shopSingularity = new THREE.Mesh(
+                new THREE.SphereGeometry(2, 32, 32),
+                new THREE.MeshBasicMaterial({ color: 0x000000 })
+            );
+            shopSingularity.position.set(0, 0, -8);
+            shopScene.add(shopSingularity);
+            shopDecorativeObjects.push({ mesh: shopSingularity, rotationSpeed: 0.01 });
+
+            const shopDisk = new THREE.Mesh(
+                new THREE.TorusGeometry(3.5, 0.5, 2, 50),
+                new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.8, side: THREE.DoubleSide })
+            );
+            shopDisk.position.set(0, 0, -8);
+            shopDisk.rotation.x = Math.PI / 2.5;
+            shopScene.add(shopDisk);
+            shopDecorativeObjects.push({ mesh: shopDisk, rotationSpeed: 0.03 });
+            break;
+        case 'custom':
+            const modShopAssets = ModManager.assets.get(shopCurrentBgId || currentBgId);
+            if (modShopAssets?.customModel) {
+                // Apply texture to model if specified
+                if (modShopAssets.envTexture) {
+                    modShopAssets.customModel.traverse(child => {
+                        if (child.isMesh) {
+                            child.material = new THREE.MeshPhongMaterial({ map: modShopAssets.envTexture });
+                        }
+                    });
+                }
+                const mesh = modShopAssets.customModel.clone();
+                mesh.position.set(0, 0, -5);
+                mesh.scale.setScalar(1);
+                shopScene.add(mesh);
+                shopDecorativeObjects.push({ mesh, rotationSpeed: 0.02 });
+            } else if (modShopAssets?.envTexture || BACKGROUNDS.find(b => b.id === (shopCurrentBgId || currentBgId))?.texturePath) {
+                const tex = modShopAssets?.envTexture || glitchTexture;
+                const mesh = new THREE.Mesh(
+                    new THREE.SphereGeometry(1, 32, 32),
+                    new THREE.MeshPhongMaterial({ map: tex })
+                );
+                mesh.position.set(0, 0, -5);
+                shopScene.add(mesh);
+                shopDecorativeObjects.push({ mesh, rotationSpeed: 0.02 });
+            } else {
+                const shopMystery = new THREE.Mesh(
+                    new THREE.IcosahedronGeometry(2, 1),
+                    new THREE.MeshPhongMaterial({ color: 0xffffff, wireframe: true })
+                );
+                shopMystery.position.set(0, 0, -8);
+                shopScene.add(shopMystery);
+                shopDecorativeObjects.push({ mesh: shopMystery, rotationSpeed: 0.02 });
+            }
+            break;
+    }
+}
+
+function animateDecorativeObjects(objects) {
+    objects.forEach(obj => {
+        if (obj.rotationSpeed) {
+            obj.mesh.rotation.y += obj.rotationSpeed;
+            obj.mesh.rotation.x += obj.rotationSpeed * 0.5;
+        }
+        if (obj.speed) {
+            obj.mesh.position.y -= obj.speed;
+            if (obj.mesh.position.y < -50) obj.mesh.position.y = 50;
+        }
+        if (obj.floatSpeed) {
+            obj.mesh.position.y = obj.initialY + Math.sin(Date.now() * 0.001 * obj.floatSpeed * 50) * 2;
+        }
+    });
+}
+
+function animateShop() {
+    if (document.getElementById('shop-overlay').style.display !== 'none') {
+        requestAnimationFrame(animateShop);
+        if (shopSnake) shopSnake.rotation.y += 0.02;
+        animateDecorativeObjects(shopDecorativeObjects);
+        shopRenderer.render(shopScene, shopCamera);
+    }
+}
+
+document.getElementById('shop-btn').onclick = () => {
+    document.getElementById('shop-overlay').style.display = 'flex';
+    audioManager.init();
+    if (!shopRenderer) initShopPreview();
+    updateShopPreview();
+    updateShopPreviewBg(); // Ensure bg is correct when opening
+    audioManager.updateMusicTheme(shopCurrentBgId || currentBgId); // Play shop bg music
+    animateShop();
+};
+
+document.getElementById('close-shop-btn').onclick = () => {
+    document.getElementById('shop-overlay').style.display = 'none';
+};
+
+document.getElementById('start-btn').onclick = () => {
+    document.getElementById('overlay').style.display = 'none';
+    audioManager.init();
+    audioManager.updateMusicTheme(currentBgId); // Start themed music
+    gameStarted = true;
+    updateBackground(); // Ensure background is correct for game start
+    initGame();
+};
+
+function onKeyDown(event) {
+    if (!gameStarted) return;
+    switch (event.key) {
+        case 'ArrowUp': if (direction.z === 0) nextDirection.set(0, 0, -1); break;
+        case 'ArrowDown': if (direction.z === 0) nextDirection.set(0, 0, 1); break;
+        case 'ArrowLeft': if (direction.x === 0) nextDirection.set(-1, 0, 0); break;
+        case 'ArrowRight': if (direction.x === 0) nextDirection.set(1, 0, 0); break;
+    }
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    update();
+    updateParticles();
+    animateDecorativeObjects(decorativeObjects);
+    
+    if (snake.length > 0) {
+        const headPos = snake[0].pos;
+        const targetPos = headPos.clone().add(new THREE.Vector3(0, 10, 20));
+        camera.position.lerp(targetPos, 0.05);
+        controls.target.lerp(headPos, 0.1);
+    }
+
+    // Animate starfield slightly
+    if (starfield) {
+        starfield.rotation.y += 0.0005;
+    }
+
+    // Animate coin
+    if (coin) {
+        coin.mesh.rotation.y += 0.05;
+    }
+    
+    controls.update();
+    renderer.render(scene, camera);
+}
+
+window.addEventListener('keydown', onKeyDown);
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+animate();
+
+// Global Error Handling
+window.onerror = function(message, source, lineno, colno, error) {
+    Notifications.show(`SYSTEM GLITCH: ${message.split(':')[1] || message}`, 'error');
+    return false;
+};
+
+// Initialize Mod Manager
+ModManager.loadMods();
