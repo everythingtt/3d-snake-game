@@ -22,6 +22,11 @@ const TRANSLATIONS = {
         cheater_speed: "Cheater! Speed manipulation detected.",
         cheater_value: "Cheater! Value tampering detected.",
         system_glitch: "SYSTEM GLITCH",
+        mods: "Mods",
+        upload_mod: "Upload Mod Folder",
+        no_mods: "No mods found yet",
+        mod_invalid: "Invalid Mod: metadata.json missing",
+        mod_loaded: "Mod loaded: ",
         skins_list: {
             classic: "Classic Green",
             neon: "Neon Blue",
@@ -58,6 +63,11 @@ const TRANSLATIONS = {
         cheater_speed: "غشاش! تم اكتشاف تلاعب بالسرعة.",
         cheater_value: "غشاش! تم اكتشاف تلاعب بالقيم.",
         system_glitch: "خلل في النظام",
+        mods: "التحسينات",
+        upload_mod: "تحميل مجلد التحسينات",
+        no_mods: "لا توجد تحسينات بعد",
+        mod_invalid: "تحسين غير صالح: ملف metadata.json مفقود",
+        mod_loaded: "تم تحميل التحسين: ",
         skins_list: {
             classic: "الأخضر الكلاسيكي",
             neon: "النيون الأزرق",
@@ -94,6 +104,11 @@ const TRANSLATIONS = {
         cheater_speed: "作弊！检测到速度异常。",
         cheater_value: "作弊！检测到数值篡改。",
         system_glitch: "系统故障",
+        mods: "模组",
+        upload_mod: "上传模组文件夹",
+        no_mods: "尚未发现模组",
+        mod_invalid: "模组无效：缺少 metadata.json",
+        mod_loaded: "模组已加载：",
         skins_list: {
             classic: "经典绿",
             neon: "霓虹蓝",
@@ -289,159 +304,198 @@ const Notifications = {
 // Modding Framework
 const ModManager = {
     mods: [],
-    assets: new Map(), // Store loaded textures/models for mods
+    assets: new Map(),
+    enabledMods: new Set(JSON.parse(Security.load('snake3d_enabled_mods_secure', '[]'))),
 
-    async loadMods() {
-        try {
-            const response = await fetch('mods/manifest.json').catch(e => ({ ok: false }));
-            if (!response.ok) {
-                if (response.status === 404) console.log('Mod manifest not found (404)');
-                return;
-            }
-            
-            const manifest = await response.json();
-            for (const modFolder of manifest.mods) {
-                await this.loadMod(modFolder);
-            }
-            updateShopList();
-        } catch (e) {
-            console.log('No mods found or error loading manifest.');
+    async init() {
+        this.mods = JSON.parse(Security.load('snake3d_installed_mods_secure', '[]'));
+        await this.loadEnabledMods();
+        this.updateModUI();
+        
+        // Setup upload listener
+        const input = document.getElementById('mod-folder-input');
+        const btn = document.getElementById('upload-mod-btn');
+        if (btn && input) {
+            btn.onclick = () => input.click();
+            input.onchange = (e) => this.handleFolderUpload(e.target.files);
         }
     },
 
-    async loadMod(folder) {
-        try {
-            const basePath = `mods/${folder}/`;
-            const res = await fetch(`${basePath}mod.json`);
-            if (!res.ok) {
-                Notifications.show(`SIGNAL LOST: Failed to load mod config for "${folder}" (${res.status})`, 'warning');
-                return;
-            }
-            const modData = await res.json();
-            
-            if (modData.skins) {
-                for (const skin of modData.skins) {
-                    const skinId = `mod_${folder}_${skin.id}`;
-                    
-                    try {
-                        let headTexture = null;
-                        let bodyTexture = null;
-                        if (skin.headTexture) headTexture = await textureLoader.loadAsync(`${basePath}${skin.headTexture}`).catch(() => null);
-                        if (skin.bodyTexture) bodyTexture = await textureLoader.loadAsync(`${basePath}${skin.bodyTexture}`).catch(() => null);
-                        
-                        if (skin.headTexture && !headTexture) Notifications.show(`DATA CORRUPTION: Texture 404 - ${skin.headTexture}`, 'warning');
-                        if (skin.bodyTexture && !bodyTexture) Notifications.show(`DATA CORRUPTION: Texture 404 - ${skin.bodyTexture}`, 'warning');
-
-                        if (headTexture || bodyTexture) {
-                            this.assets.set(skinId, { headTexture, bodyTexture });
-                        }
-
-                        SKINS.push({
-                        id: skinId,
-                        name: `[MOD] ${skin.name}`,
-                        head: skin.headColor ? parseInt(skin.headColor, 16) : 0xffffff,
-                        body: skin.bodyColor ? parseInt(skin.bodyColor, 16) : 0xffffff,
-                        headTexture: skin.headTexture, // Store for 404 checks
-                        bodyTexture: skin.bodyTexture,
-                        emissive: skin.emissiveColor ? parseInt(skin.emissiveColor, 16) : null,
-                        emissiveIntensity: skin.emissiveIntensity || 1.0,
-                        shininess: skin.shininess || 30,
-                        opacity: skin.opacity || 1.0,
-                        transparent: skin.opacity < 1.0,
-                        price: skin.price || 0,
-                        isMod: true
-                    });
-                    } catch (e) {
-                        Notifications.show(`Error loading assets for skin: ${skin.name}`);
-                    }
-                }
-            }
-            
-            if (modData.backgrounds) {
-                for (const bg of modData.backgrounds) {
-                    const bgId = `mod_${folder}_${bg.id}`;
-                    
-                    try {
-                        let customModel = null;
-                        let envTexture = null;
-                        
-                        if (bg.modelPath) {
-                            customModel = await gltfLoader.loadAsync(`${basePath}Background/Models/${bg.modelPath}`)
-                                .then(gltf => gltf.scene)
-                                .catch(() => {
-                                    Notifications.show(`VOID ERROR: Model 404 - ${bg.modelPath}`, 'warning');
-                                    return null;
-                                });
-                        }
-                        if (bg.texturePath) {
-                            envTexture = await textureLoader.loadAsync(`${basePath}Background/Textures/${bg.texturePath}`)
-                                .catch(() => {
-                                    Notifications.show(`DATA CORRUPTION: Texture 404 - ${bg.texturePath}`, 'warning');
-                                    return null;
-                                });
-                        }
-
-                        if (customModel || envTexture) {
-                            this.assets.set(bgId, { customModel, envTexture });
-                        }
-
-                        // Parse modded music if provided
-                        let modMusic = { type: 'triangle', sequence: [440, 523.25, 659.25, 783.99], speed: 0.2 };
-                        if (bg.music) {
-                            modMusic = {
-                                type: bg.music.type || 'triangle',
-                                sequence: bg.music.sequence || [440, 523.25, 659.25, 783.99],
-                                speed: bg.music.speed || 0.2,
-                                random: bg.music.random || false,
-                                externalUrl: bg.music.fileName ? `${basePath}Audio/Music/${bg.music.fileName}` : null
-                            };
-                        }
-
-                        BACKGROUNDS.push({
-                            id: bgId,
-                            name: `[MOD] ${bg.name}`,
-                            color: parseInt(bg.color, 16),
-                            stars: bg.stars || false,
-                            starSize: bg.starSize || 0.1,
-                            starColor: bg.starColor ? parseInt(bg.starColor, 16) : 0xffffff,
-                            grid: parseInt(bg.gridColor, 16),
-                            gridOpacity: bg.gridOpacity || 1.0,
-                            fog: parseInt(bg.fogColor, 16),
-                            ambientLightColor: bg.ambientLightColor ? parseInt(bg.ambientLightColor, 16) : 0x404040,
-                            ambientLightIntensity: bg.ambientLightIntensity || 1.0,
-                            pointLightColor: bg.pointLightColor ? parseInt(bg.pointLightColor, 16) : 0xffffff,
-                            pointLightIntensity: bg.pointLightIntensity || 1.0,
-                            particleColor: bg.particleColor ? parseInt(bg.particleColor, 16) : 0xff0000,
-                            texturePath: bg.texturePath, // Store for 404 checks
-                            envType: bg.envType || 'custom',
-                            price: bg.price || 0,
-                            isMod: true,
-                            music: modMusic,
-                            sfx: bg.sfx ? {
-                                eat: bg.sfx.eat ? `${basePath}Audio/SFX/${bg.sfx.eat}` : null,
-                                coin: bg.sfx.coin ? `${basePath}Audio/SFX/${bg.sfx.coin}` : null,
-                                gameover: bg.sfx.gameover ? `${basePath}Audio/SFX/${bg.sfx.gameover}` : null
-                            } : null
-                        });
-
-                    // Pre-load modded SFX if specified
-                    if (bg.sfx) {
-                        if (bg.sfx.eat) await audioManager.loadExternalAudio(`${basePath}Audio/SFX/${bg.sfx.eat}`);
-                        if (bg.sfx.coin) await audioManager.loadExternalAudio(`${basePath}Audio/SFX/${bg.sfx.coin}`);
-                        if (bg.sfx.gameover) await audioManager.loadExternalAudio(`${basePath}Audio/SFX/${bg.sfx.gameover}`);
-                    }
-                    } catch (e) {
-                        Notifications.show(`Error loading assets for bg: ${bg.name}`);
-                    }
-                }
-            }
-            
-            this.mods.push({ folder, ...modData });
-            console.log(`Successfully loaded mod: ${modData.name}`);
-        } catch (e) {
-            console.error(`Failed to load mod from ${folder}:`, e);
-            Notifications.show(`MOD COLLAPSE: Critical error loading "${folder}"`, 'error');
+    async loadEnabledMods() {
+        for (const modId of this.enabledMods) {
+            const mod = this.mods.find(m => m.id === modId);
+            if (mod) await this.applyMod(mod);
         }
+    },
+
+    async applyMod(mod) {
+        const t = TRANSLATIONS[LanguageManager.current];
+        const lang = LanguageManager.current;
+        
+        // Localization support for mod metadata
+        const modTitle = mod.metadata.translations?.[lang]?.title || mod.metadata.title;
+        
+        // Load skins
+        if (mod.content.skins) {
+            for (const skin of mod.content.skins) {
+                const skinId = `mod_${mod.id}_${skin.id}`;
+                const skinName = skin.translations?.[lang]?.name || skin.name;
+                
+                let headTexture = null;
+                let bodyTexture = null;
+                if (skin.headTextureBase64) headTexture = await this.loadBase64Texture(skin.headTextureBase64);
+                if (skin.bodyTextureBase64) bodyTexture = await this.loadBase64Texture(skin.bodyTextureBase64);
+
+                if (headTexture || bodyTexture) {
+                    this.assets.set(skinId, { headTexture, bodyTexture });
+                }
+
+                SKINS.push({
+                    id: skinId,
+                    name: `[MOD] ${skinName}`,
+                    head: skin.headColor ? parseInt(skin.headColor, 16) : 0xffffff,
+                    body: skin.bodyColor ? parseInt(skin.bodyColor, 16) : 0xffffff,
+                    emissive: skin.emissiveColor ? parseInt(skin.emissiveColor, 16) : null,
+                    price: skin.price || 0,
+                    isMod: true
+                });
+            }
+        }
+
+        // Load backgrounds
+        if (mod.content.backgrounds) {
+            for (const bg of mod.content.backgrounds) {
+                const bgId = `mod_${mod.id}_${bg.id}`;
+                const bgName = bg.translations?.[lang]?.name || bg.name;
+
+                BACKGROUNDS.push({
+                    id: bgId,
+                    name: `[MOD] ${bgName}`,
+                    color: parseInt(bg.color, 16),
+                    stars: bg.stars || false,
+                    grid: parseInt(bg.gridColor, 16),
+                    fog: parseInt(bg.fogColor, 16),
+                    envType: bg.envType || 'custom',
+                    price: bg.price || 0,
+                    isMod: true,
+                    music: bg.music
+                });
+            }
+        }
+        console.log(`${t.mod_loaded}${modTitle}`);
+    },
+
+    async loadBase64Texture(base64) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const texture = new THREE.Texture(img);
+                texture.needsUpdate = true;
+                resolve(texture);
+            };
+            img.src = base64;
+        });
+    },
+
+    async handleFolderUpload(files) {
+        const t = TRANSLATIONS[LanguageManager.current];
+        let modData = {
+            id: 'mod_' + Date.now(),
+            metadata: null,
+            content: null
+        };
+
+        const metadataFile = Array.from(files).find(f => f.name === 'metadata.json');
+        if (!metadataFile) {
+            Notifications.show(t.mod_invalid, 'error');
+            return;
+        }
+
+        try {
+            modData.metadata = JSON.parse(await metadataFile.text());
+            const contentFile = Array.from(files).find(f => f.name === 'mod.json');
+            if (contentFile) modData.content = JSON.parse(await contentFile.text());
+
+            for (const file of files) {
+                if (file.type.startsWith('image/')) {
+                    const base64 = await this.fileToBase64(file);
+                    if (file.name === modData.metadata.favicon) modData.metadata.faviconBase64 = base64;
+                    if (file.name === modData.metadata.banner) modData.metadata.bannerBase64 = base64;
+                    if (modData.content?.skins) {
+                        modData.content.skins.forEach(skin => {
+                            if (skin.headTexture === file.name) skin.headTextureBase64 = base64;
+                            if (skin.bodyTexture === file.name) skin.bodyTextureBase64 = base64;
+                        });
+                    }
+                }
+            }
+
+            this.mods.push(modData);
+            Security.save('snake3d_installed_mods_secure', JSON.stringify(this.mods));
+            this.updateModUI();
+            Notifications.show(`${t.mod_loaded} ${modData.metadata.title}`, 'success');
+        } catch (e) {
+            Notifications.show(`MOD ERROR: ${e.message}`, 'error');
+        }
+    },
+
+    fileToBase64(file) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(file);
+        });
+    },
+
+    toggleMod(modId) {
+        if (this.enabledMods.has(modId)) this.enabledMods.delete(modId);
+        else this.enabledMods.add(modId);
+        Security.save('snake3d_enabled_mods_secure', JSON.stringify([...this.enabledMods]));
+        location.reload();
+    },
+
+    deleteMod(modId) {
+        this.mods = this.mods.filter(m => m.id !== modId);
+        this.enabledMods.delete(modId);
+        Security.save('snake3d_installed_mods_secure', JSON.stringify(this.mods));
+        Security.save('snake3d_enabled_mods_secure', JSON.stringify([...this.enabledMods]));
+        this.updateModUI();
+    },
+
+    updateModUI() {
+        const container = document.getElementById('mod-list');
+        if (!container) return;
+        const t = TRANSLATIONS[LanguageManager.current];
+        const lang = LanguageManager.current;
+        if (this.mods.length === 0) {
+            container.innerHTML = `<p style="color: #666; text-align: center; padding: 2rem;">${t.no_mods}</p>`;
+            return;
+        }
+        container.innerHTML = '';
+        this.mods.forEach(mod => {
+            const modTitle = mod.metadata.translations?.[lang]?.title || mod.metadata.title;
+            const modDesc = mod.metadata.translations?.[lang]?.description || mod.metadata.description;
+            const card = document.createElement('div');
+            card.className = `mod-card ${this.enabledMods.has(mod.id) ? 'active' : ''}`;
+            card.innerHTML = `
+                <div class="mod-banner" style="background-image: url(${mod.metadata.bannerBase64 || ''})"></div>
+                <div class="mod-info">
+                    <div class="mod-favicon" style="background-image: url(${mod.metadata.faviconBase64 || ''})"></div>
+                    <div class="mod-details">
+                        <h3>${modTitle}</h3>
+                        <p>${modDesc}</p>
+                    </div>
+                </div>
+                <div class="mod-controls">
+                    <label class="toggle-switch">
+                        <input type="checkbox" ${this.enabledMods.has(mod.id) ? 'checked' : ''} onchange="ModManager.toggleMod('${mod.id}')">
+                        <span class="slider"></span>
+                    </label>
+                    <button class="delete-mod-btn" onclick="ModManager.deleteMod('${mod.id}')">Remove</button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
     }
 };
 
@@ -1433,16 +1487,30 @@ document.getElementById('tab-skins').onclick = () => {
     audioManager.playUiClick();
     document.getElementById('tab-skins').classList.add('active');
     document.getElementById('tab-backgrounds').classList.remove('active');
+    document.getElementById('tab-mods').classList.remove('active');
     document.getElementById('skin-list').style.display = 'grid';
     document.getElementById('bg-list').style.display = 'none';
+    document.getElementById('mod-management').style.display = 'none';
 };
 
 document.getElementById('tab-backgrounds').onclick = () => {
     audioManager.playUiClick();
     document.getElementById('tab-backgrounds').classList.add('active');
     document.getElementById('tab-skins').classList.remove('active');
+    document.getElementById('tab-mods').classList.remove('active');
     document.getElementById('skin-list').style.display = 'none';
     document.getElementById('bg-list').style.display = 'grid';
+    document.getElementById('mod-management').style.display = 'none';
+};
+
+document.getElementById('tab-mods').onclick = () => {
+    audioManager.playUiClick();
+    document.getElementById('tab-mods').classList.add('active');
+    document.getElementById('tab-skins').classList.remove('active');
+    document.getElementById('tab-backgrounds').classList.remove('active');
+    document.getElementById('skin-list').style.display = 'none';
+    document.getElementById('bg-list').style.display = 'none';
+    document.getElementById('mod-management').style.display = 'block';
 };
 
 function updateShopPreview() {
@@ -1746,7 +1814,7 @@ window.onerror = function(message, source, lineno, colno, error) {
 };
 
 // Initialize Mod Manager
-ModManager.loadMods();
+ModManager.init();
 
 // Apply Localization
 LanguageManager.apply();

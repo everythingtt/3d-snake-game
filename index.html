@@ -68,11 +68,19 @@
             <div class="shop-tabs">
                 <button id="tab-skins" class="active" data-t="skins">Skins</button>
                 <button id="tab-backgrounds" data-t="backgrounds">Backgrounds</button>
+                <button id="tab-mods" data-t="mods">Mods</button>
             </div>
             <div id="skin-preview-container"></div>
             <div id="shop-content">
                 <div id="skin-list"></div>
                 <div id="bg-list" style="display: none;"></div>
+                <div id="mod-management" style="display: none;">
+                    <div class="mod-upload-zone">
+                        <input type="file" id="mod-folder-input" webkitdirectory directory multiple style="display: none;">
+                        <button id="upload-mod-btn" class="action-btn" data-t="upload_mod">Upload Mod Folder</button>
+                    </div>
+                    <div id="mod-list"></div>
+                </div>
             </div>
             <button id="close-shop-btn" data-t="back">Back to Menu</button>
         </div>
