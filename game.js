@@ -22,11 +22,6 @@ const TRANSLATIONS = {
         cheater_speed: "Cheater! Speed manipulation detected.",
         cheater_value: "Cheater! Value tampering detected.",
         system_glitch: "SYSTEM GLITCH",
-        mods: "Mods",
-        upload_mod: "Upload Mod Folder",
-        no_mods: "No mods found yet",
-        mod_invalid: "Invalid Mod: metadata.json missing",
-        mod_loaded: "Mod loaded: ",
         skins_list: {
             classic: "Classic Green",
             neon: "Neon Blue",
@@ -63,11 +58,6 @@ const TRANSLATIONS = {
         cheater_speed: "غشاش! تم اكتشاف تلاعب بالسرعة.",
         cheater_value: "غشاش! تم اكتشاف تلاعب بالقيم.",
         system_glitch: "خلل في النظام",
-        mods: "التحسينات",
-        upload_mod: "تحميل مجلد التحسينات",
-        no_mods: "لا توجد تحسينات بعد",
-        mod_invalid: "تحسين غير صالح: ملف metadata.json مفقود",
-        mod_loaded: "تم تحميل التحسين: ",
         skins_list: {
             classic: "الأخضر الكلاسيكي",
             neon: "النيون الأزرق",
@@ -104,11 +94,6 @@ const TRANSLATIONS = {
         cheater_speed: "作弊！检测到速度异常。",
         cheater_value: "作弊！检测到数值篡改。",
         system_glitch: "系统故障",
-        mods: "模组",
-        upload_mod: "上传模组文件夹",
-        no_mods: "尚未发现模组",
-        mod_invalid: "模组无效：缺少 metadata.json",
-        mod_loaded: "模组已加载：",
         skins_list: {
             classic: "经典绿",
             neon: "霓虹蓝",
@@ -163,6 +148,7 @@ const LanguageManager = {
         if (info) {
             info.querySelector('h1').innerText = t.title;
             info.querySelector('p').innerText = t.move_hint;
+            // The score line is complex, we target the spans directly in updateUI
         }
         
         const menu = document.getElementById('menu');
@@ -303,358 +289,159 @@ const Notifications = {
 // Modding Framework
 const ModManager = {
     mods: [],
-    assets: new Map(),
-    enabledMods: new Set(JSON.parse(Security.load('snake3d_enabled_mods_secure', '[]'))),
+    assets: new Map(), // Store loaded textures/models for mods
 
-    async init() {
-        this.mods = JSON.parse(Security.load('snake3d_installed_mods_secure', '[]'));
-        
-        // Load Source-Level Mods (Physical directory)
-        await this.loadSourceMods();
-        
-        await this.loadEnabledMods();
-        this.updateModUI();
-        
-        // Setup upload listener
-        const input = document.getElementById('mod-folder-input');
-        const btn = document.getElementById('upload-mod-btn');
-        if (btn && input) {
-            btn.onclick = () => input.click();
-            input.onchange = (e) => this.handleFolderUpload(e.target.files);
-        }
-    },
-
-    async loadSourceMods() {
+    async loadMods() {
         try {
-            const response = await fetch('mods/manifest.json').catch(() => ({ ok: false }));
-            if (!response.ok) return;
+            const response = await fetch('mods/manifest.json').catch(e => ({ ok: false }));
+            if (!response.ok) {
+                if (response.status === 404) console.log('Mod manifest not found (404)');
+                return;
+            }
             
             const manifest = await response.json();
-            for (const folder of manifest.mods) {
-                const basePath = `mods/${folder}/`;
-                const [metaRes, modRes] = await Promise.all([
-                    fetch(`${basePath}metadata.json`),
-                    fetch(`${basePath}mod.json`)
-                ]);
-                
-                if (metaRes.ok && modRes.ok) {
-                    const metadata = await metaRes.json();
-                    const content = await modRes.json();
-                    
-                    // Prefix asset paths with the folder path
-                    if (metadata.banner) metadata.bannerBase64 = `${basePath}${metadata.banner}`;
-                    if (metadata.favicon) metadata.faviconBase64 = `${basePath}${metadata.favicon}`;
-                    
-                    if (content.skins) {
-                        content.skins.forEach(skin => {
-                            if (skin.headTexture) skin.headTextureUrl = `${basePath}${skin.headTexture}`;
-                            if (skin.bodyTexture) skin.bodyTextureUrl = `${basePath}${skin.bodyTexture}`;
-                        });
-                    }
-
-                    if (content.backgrounds) {
-                        content.backgrounds.forEach(bg => {
-                            if (bg.music?.fileName) bg.music.fileNameUrl = `${basePath}${bg.music.fileName}`;
-                            if (bg.modelPath) bg.modelUrl = `${basePath}${bg.modelPath}`;
-                            if (bg.texturePath) bg.textureUrl = `${basePath}${bg.texturePath}`;
-                            if (bg.sfx) {
-                                Object.keys(bg.sfx).forEach(k => bg.sfx[k] = `${basePath}${bg.sfx[k]}`);
-                            }
-                        });
-                    }
-
-                    const sourceMod = {
-                        id: `source_${folder}`,
-                        metadata,
-                        content,
-                        isSource: true,
-                        basePath
-                    };
-                    
-                    // Only add if not already in mods (prevent duplicates)
-                    if (!this.mods.find(m => m.id === sourceMod.id)) {
-                        this.mods.push(sourceMod);
-                        this.enabledMods.add(sourceMod.id); // Auto-enable source mods
-                    }
-                }
+            for (const modFolder of manifest.mods) {
+                await this.loadMod(modFolder);
             }
+            updateShopList();
         } catch (e) {
-            console.log('No physical mods directory found or error loading manifest.');
+            console.log('No mods found or error loading manifest.');
         }
     },
 
-    async loadEnabledMods() {
-        for (const modId of this.enabledMods) {
-            const mod = this.mods.find(m => m.id === modId);
-            if (mod) await this.applyMod(mod);
-        }
-    },
-
-    async applyMod(mod) {
-        const t = TRANSLATIONS[LanguageManager.current];
-        const lang = LanguageManager.current;
-        
-        const modTitle = mod.metadata.translations?.[lang]?.title || mod.metadata.title;
-        
-        // Load skins
-        if (mod.content.skins) {
-            for (const skin of mod.content.skins) {
-                const skinId = `mod_${mod.id}_${skin.id}`;
-                const skinName = skin.translations?.[lang]?.name || skin.name;
-                
-                let headTexture = null;
-                let bodyTexture = null;
-                
-                // Handle both Source (URL) and In-Memory (Base64) assets
-                if (skin.headTextureBase64) headTexture = await this.loadBase64Texture(skin.headTextureBase64);
-                else if (skin.headTextureUrl) headTexture = await textureLoader.loadAsync(skin.headTextureUrl);
-                
-                if (skin.bodyTextureBase64) bodyTexture = await this.loadBase64Texture(skin.bodyTextureBase64);
-                else if (skin.bodyTextureUrl) bodyTexture = await textureLoader.loadAsync(skin.bodyTextureUrl);
-
-                if (headTexture || bodyTexture) {
-                    this.assets.set(skinId, { headTexture, bodyTexture });
-                }
-
-                SKINS.push({
-                    id: skinId,
-                    name: `[MOD] ${skinName}`,
-                    head: skin.headColor ? parseInt(skin.headColor, 16) : 0xffffff,
-                    body: skin.bodyColor ? parseInt(skin.bodyColor, 16) : 0xffffff,
-                    emissive: skin.emissiveColor ? parseInt(skin.emissiveColor, 16) : null,
-                    emissiveIntensity: skin.emissiveIntensity || 1.0,
-                    shininess: skin.shininess || 30,
-                    opacity: skin.opacity !== undefined ? skin.opacity : 1.0,
-                    transparent: skin.opacity < 1.0,
-                    price: skin.price || 0,
-                    isMod: true
-                });
-            }
-        }
-
-        // Load backgrounds
-        if (mod.content.backgrounds) {
-            for (const bg of mod.content.backgrounds) {
-                const bgId = `mod_${mod.id}_${bg.id}`;
-                const bgName = bg.translations?.[lang]?.name || bg.name;
-
-                // Handle 3D Models and Textures for both Source and In-Memory
-                let customModel = null;
-                let envTexture = null;
-
-                if (mod.isSource) {
-                    if (bg.modelUrl) {
-                        customModel = await gltfLoader.loadAsync(bg.modelUrl).then(gltf => gltf.scene).catch(() => null);
-                    }
-                    if (bg.textureUrl) {
-                        envTexture = await textureLoader.loadAsync(bg.textureUrl).catch(() => null);
-                    }
-                } else {
-                    if (bg.modelPath && mod.assets[bg.modelPath]) {
-                        customModel = await this.loadBase64GLTF(mod.assets[bg.modelPath]).catch(() => null);
-                    }
-                    if (bg.texturePath && mod.assets[bg.texturePath]) {
-                        envTexture = await this.loadBase64Texture(mod.assets[bg.texturePath]).catch(() => null);
-                    }
-                }
-
-                if (customModel || envTexture) {
-                    this.assets.set(bgId, { customModel, envTexture });
-                }
-
-                // Update music fileName to use the absolute URL if it's a source mod
-                if (mod.isSource && bg.music?.fileNameUrl) {
-                    bg.music.fileName = bg.music.fileNameUrl;
-                }
-
-                BACKGROUNDS.push({
-                    id: bgId,
-                    name: `[MOD] ${bgName}`,
-                    color: parseInt(bg.color, 16),
-                    stars: bg.stars || false,
-                    starSize: bg.starSize || 0.1,
-                    starColor: bg.starColor ? parseInt(bg.starColor, 16) : 0xffffff,
-                    grid: parseInt(bg.gridColor, 16),
-                    gridOpacity: bg.gridOpacity !== undefined ? bg.gridOpacity : 1.0,
-                    fog: parseInt(bg.fogColor, 16),
-                    ambientLightColor: bg.ambientLightColor ? parseInt(bg.ambientLightColor, 16) : 0x404040,
-                    ambientLightIntensity: bg.ambientLightIntensity !== undefined ? bg.ambientLightIntensity : 1.0,
-                    pointLightColor: bg.pointLightColor ? parseInt(bg.pointLightColor, 16) : 0xffffff,
-                    pointLightIntensity: bg.pointLightIntensity !== undefined ? bg.pointLightIntensity : 1.0,
-                    particleColor: bg.particleColor ? parseInt(bg.particleColor, 16) : 0xff0000,
-                    envType: bg.envType || 'custom',
-                    price: bg.price || 0,
-                    isMod: true,
-                    music: bg.music,
-                    sfx: bg.sfx 
-                });
-
-                // Pre-load modded SFX
-                if (bg.sfx) {
-                    const assets = mod.isSource ? {} : mod.assets;
-                    if (bg.sfx.eat) await audioManager.loadExternalAudio(bg.sfx.eat, assets?.[bg.sfx.eat]);
-                    if (bg.sfx.coin) await audioManager.loadExternalAudio(bg.sfx.coin, assets?.[bg.sfx.coin]);
-                    if (bg.sfx.gameover) await audioManager.loadExternalAudio(bg.sfx.gameover, assets?.[bg.sfx.gameover]);
-                }
-            }
-        }
-        console.log(`${t.mod_loaded}${modTitle}`);
-    },
-
-    async loadBase64Texture(base64) {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-                const texture = new THREE.Texture(img);
-                texture.colorSpace = THREE.SRGBColorSpace;
-                texture.needsUpdate = true;
-                resolve(texture);
-            };
-            img.src = base64;
-        });
-    },
-
-    async loadBase64GLTF(base64) {
-        return new Promise((resolve, reject) => {
-            const loader = new GLTFLoader();
-            loader.parse(base64, '', (gltf) => {
-                resolve(gltf.scene);
-            }, reject);
-        });
-    },
-
-    async handleFolderUpload(files) {
-        const t = TRANSLATIONS[LanguageManager.current];
-        let modData = {
-            id: 'mod_' + Date.now(),
-            metadata: null,
-            content: null,
-            assets: {} // Store base64 audio/images indexed by relative path
-        };
-
-        const fileArray = Array.from(files);
-        
-        // 1. Find the root of the mod (where metadata.json is)
-        const metadataFile = fileArray.find(f => f.name === 'metadata.json');
-        if (!metadataFile) {
-            Notifications.show(t.mod_invalid, 'error');
-            return;
-        }
-
-        const rootPath = metadataFile.webkitRelativePath.replace('metadata.json', '');
-
+    async loadMod(folder) {
         try {
-            modData.metadata = JSON.parse(await metadataFile.text());
-            const contentFile = fileArray.find(f => f.webkitRelativePath === rootPath + 'mod.json');
-            if (contentFile) modData.content = JSON.parse(await contentFile.text());
-
-            // 3. Process All Assets using relative paths
-            for (const file of fileArray) {
-                const relativePath = file.webkitRelativePath.replace(rootPath, '');
-                
-                // Process Images
-                if (file.type.startsWith('image/')) {
-                    const base64 = await this.fileToBase64(file);
-                    modData.assets[relativePath] = base64; // Store in assets map
-
-                    if (relativePath === modData.metadata.favicon) modData.metadata.faviconBase64 = base64;
-                    if (relativePath === modData.metadata.banner) modData.metadata.bannerBase64 = base64;
+            const basePath = `mods/${folder}/`;
+            const res = await fetch(`${basePath}mod.json`);
+            if (!res.ok) {
+                Notifications.show(`SIGNAL LOST: Failed to load mod config for "${folder}" (${res.status})`, 'warning');
+                return;
+            }
+            const modData = await res.json();
+            
+            if (modData.skins) {
+                for (const skin of modData.skins) {
+                    const skinId = `mod_${folder}_${skin.id}`;
                     
-                    if (modData.content?.skins) {
-                        modData.content.skins.forEach(skin => {
-                            if (skin.headTexture === relativePath) skin.headTextureBase64 = base64;
-                            if (skin.bodyTexture === relativePath) skin.bodyTextureBase64 = base64;
-                        });
+                    try {
+                        let headTexture = null;
+                        let bodyTexture = null;
+                        if (skin.headTexture) headTexture = await textureLoader.loadAsync(`${basePath}${skin.headTexture}`).catch(() => null);
+                        if (skin.bodyTexture) bodyTexture = await textureLoader.loadAsync(`${basePath}${skin.bodyTexture}`).catch(() => null);
+                        
+                        if (skin.headTexture && !headTexture) Notifications.show(`DATA CORRUPTION: Texture 404 - ${skin.headTexture}`, 'warning');
+                        if (skin.bodyTexture && !bodyTexture) Notifications.show(`DATA CORRUPTION: Texture 404 - ${skin.bodyTexture}`, 'warning');
+
+                        if (headTexture || bodyTexture) {
+                            this.assets.set(skinId, { headTexture, bodyTexture });
+                        }
+
+                        SKINS.push({
+                        id: skinId,
+                        name: `[MOD] ${skin.name}`,
+                        head: skin.headColor ? parseInt(skin.headColor, 16) : 0xffffff,
+                        body: skin.bodyColor ? parseInt(skin.bodyColor, 16) : 0xffffff,
+                        headTexture: skin.headTexture, // Store for 404 checks
+                        bodyTexture: skin.bodyTexture,
+                        emissive: skin.emissiveColor ? parseInt(skin.emissiveColor, 16) : null,
+                        emissiveIntensity: skin.emissiveIntensity || 1.0,
+                        shininess: skin.shininess || 30,
+                        opacity: skin.opacity || 1.0,
+                        transparent: skin.opacity < 1.0,
+                        price: skin.price || 0,
+                        isMod: true
+                    });
+                    } catch (e) {
+                        Notifications.show(`Error loading assets for skin: ${skin.name}`);
                     }
                 }
-                
-                // Process 3D Models
-                if (file.name.endsWith('.gltf') || file.name.endsWith('.glb')) {
-                    const base64 = await this.fileToBuffer(file);
-                    modData.assets[relativePath] = base64;
-                }
-                
-                // Process Audio (Music & SFX)
-                if (file.type.startsWith('audio/') || file.name.endsWith('.mp3') || file.name.endsWith('.wav') || file.name.endsWith('.ogg')) {
-                    const base64 = await this.fileToBase64(file);
-                    modData.assets[relativePath] = base64;
+            }
+            
+            if (modData.backgrounds) {
+                for (const bg of modData.backgrounds) {
+                    const bgId = `mod_${folder}_${bg.id}`;
+                    
+                    try {
+                        let customModel = null;
+                        let envTexture = null;
+                        
+                        if (bg.modelPath) {
+                            customModel = await gltfLoader.loadAsync(`${basePath}Background/Models/${bg.modelPath}`)
+                                .then(gltf => gltf.scene)
+                                .catch(() => {
+                                    Notifications.show(`VOID ERROR: Model 404 - ${bg.modelPath}`, 'warning');
+                                    return null;
+                                });
+                        }
+                        if (bg.texturePath) {
+                            envTexture = await textureLoader.loadAsync(`${basePath}Background/Textures/${bg.texturePath}`)
+                                .catch(() => {
+                                    Notifications.show(`DATA CORRUPTION: Texture 404 - ${bg.texturePath}`, 'warning');
+                                    return null;
+                                });
+                        }
+
+                        if (customModel || envTexture) {
+                            this.assets.set(bgId, { customModel, envTexture });
+                        }
+
+                        // Parse modded music if provided
+                        let modMusic = { type: 'triangle', sequence: [440, 523.25, 659.25, 783.99], speed: 0.2 };
+                        if (bg.music) {
+                            modMusic = {
+                                type: bg.music.type || 'triangle',
+                                sequence: bg.music.sequence || [440, 523.25, 659.25, 783.99],
+                                speed: bg.music.speed || 0.2,
+                                random: bg.music.random || false,
+                                externalUrl: bg.music.fileName ? `${basePath}Audio/Music/${bg.music.fileName}` : null
+                            };
+                        }
+
+                        BACKGROUNDS.push({
+                            id: bgId,
+                            name: `[MOD] ${bg.name}`,
+                            color: parseInt(bg.color, 16),
+                            stars: bg.stars || false,
+                            starSize: bg.starSize || 0.1,
+                            starColor: bg.starColor ? parseInt(bg.starColor, 16) : 0xffffff,
+                            grid: parseInt(bg.gridColor, 16),
+                            gridOpacity: bg.gridOpacity || 1.0,
+                            fog: parseInt(bg.fogColor, 16),
+                            ambientLightColor: bg.ambientLightColor ? parseInt(bg.ambientLightColor, 16) : 0x404040,
+                            ambientLightIntensity: bg.ambientLightIntensity || 1.0,
+                            pointLightColor: bg.pointLightColor ? parseInt(bg.pointLightColor, 16) : 0xffffff,
+                            pointLightIntensity: bg.pointLightIntensity || 1.0,
+                            particleColor: bg.particleColor ? parseInt(bg.particleColor, 16) : 0xff0000,
+                            texturePath: bg.texturePath, // Store for 404 checks
+                            envType: bg.envType || 'custom',
+                            price: bg.price || 0,
+                            isMod: true,
+                            music: modMusic,
+                            sfx: bg.sfx ? {
+                                eat: bg.sfx.eat ? `${basePath}Audio/SFX/${bg.sfx.eat}` : null,
+                                coin: bg.sfx.coin ? `${basePath}Audio/SFX/${bg.sfx.coin}` : null,
+                                gameover: bg.sfx.gameover ? `${basePath}Audio/SFX/${bg.sfx.gameover}` : null
+                            } : null
+                        });
+
+                    // Pre-load modded SFX if specified
+                    if (bg.sfx) {
+                        if (bg.sfx.eat) await audioManager.loadExternalAudio(`${basePath}Audio/SFX/${bg.sfx.eat}`);
+                        if (bg.sfx.coin) await audioManager.loadExternalAudio(`${basePath}Audio/SFX/${bg.sfx.coin}`);
+                        if (bg.sfx.gameover) await audioManager.loadExternalAudio(`${basePath}Audio/SFX/${bg.sfx.gameover}`);
+                    }
+                    } catch (e) {
+                        Notifications.show(`Error loading assets for bg: ${bg.name}`);
+                    }
                 }
             }
-
-            this.mods.push(modData);
-            Security.save('snake3d_installed_mods_secure', JSON.stringify(this.mods));
-            this.updateModUI();
-            Notifications.show(`${t.mod_loaded} ${modData.metadata.title}`, 'success');
+            
+            this.mods.push({ folder, ...modData });
+            console.log(`Successfully loaded mod: ${modData.name}`);
         } catch (e) {
-            Notifications.show(`MOD ERROR: ${e.message}`, 'error');
+            console.error(`Failed to load mod from ${folder}:`, e);
+            Notifications.show(`MOD COLLAPSE: Critical error loading "${folder}"`, 'error');
         }
-    },
-
-    fileToBase64(file) {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.readAsDataURL(file);
-        });
-    },
-
-    fileToBuffer(file) {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.readAsArrayBuffer(file);
-        });
-    },
-
-    toggleMod(modId) {
-        if (this.enabledMods.has(modId)) this.enabledMods.delete(modId);
-        else this.enabledMods.add(modId);
-        Security.save('snake3d_enabled_mods_secure', JSON.stringify([...this.enabledMods]));
-        location.reload();
-    },
-
-    deleteMod(modId) {
-        this.mods = this.mods.filter(m => m.id !== modId);
-        this.enabledMods.delete(modId);
-        Security.save('snake3d_installed_mods_secure', JSON.stringify(this.mods));
-        Security.save('snake3d_enabled_mods_secure', JSON.stringify([...this.enabledMods]));
-        this.updateModUI();
-    },
-
-    updateModUI() {
-        const container = document.getElementById('mod-list');
-        if (!container) return;
-        const t = TRANSLATIONS[LanguageManager.current];
-        const lang = LanguageManager.current;
-        if (this.mods.length === 0) {
-            container.innerHTML = `<p style="color: #666; text-align: center; padding: 2rem;">${t.no_mods}</p>`;
-            return;
-        }
-        container.innerHTML = '';
-        this.mods.forEach(mod => {
-            const modTitle = mod.metadata.translations?.[lang]?.title || mod.metadata.title;
-            const modDesc = mod.metadata.translations?.[lang]?.description || mod.metadata.description;
-            const card = document.createElement('div');
-            card.className = `mod-card ${this.enabledMods.has(mod.id) ? 'active' : ''}`;
-            card.innerHTML = `
-                <div class="mod-banner" style="background-image: url(${mod.metadata.bannerBase64 || ''})"></div>
-                <div class="mod-info">
-                    <div class="mod-favicon" style="background-image: url(${mod.metadata.faviconBase64 || ''})"></div>
-                    <div class="mod-details">
-                        <h3>${modTitle}</h3>
-                        <p>${modDesc}</p>
-                    </div>
-                </div>
-                <div class="mod-controls">
-                    <label class="toggle-switch">
-                        <input type="checkbox" ${this.enabledMods.has(mod.id) ? 'checked' : ''} onchange="ModManager.toggleMod('${mod.id}')">
-                        <span class="slider"></span>
-                    </label>
-                    <button class="delete-mod-btn" onclick="ModManager.deleteMod('${mod.id}')">Remove</button>
-                </div>
-            `;
-            container.appendChild(card);
-        });
     }
 };
 
@@ -771,25 +558,15 @@ class AudioManager {
         this.reverbNode.buffer = impulse;
     }
 
-    async loadExternalAudio(url, base64 = null) {
+    async loadExternalAudio(url) {
         if (!this.ctx) this.init();
         if (this.externalAudioBuffers.has(url)) return this.externalAudioBuffers.get(url);
-        
         try {
-            let buffer;
-            if (base64) {
-                // Load from base64 (Mod memory)
-                const response = await fetch(base64);
-                const arrayBuffer = await response.arrayBuffer();
-                buffer = await this.ctx.decodeAudioData(arrayBuffer);
-            } else {
-                // Load from URL (Traditional mod folder)
-                const response = await fetch(url);
-                const arrayBuffer = await response.arrayBuffer();
-                buffer = await this.ctx.decodeAudioData(arrayBuffer);
-            }
-            this.externalAudioBuffers.set(url, buffer);
-            return buffer;
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+            this.externalAudioBuffers.set(url, audioBuffer);
+            return audioBuffer;
         } catch (e) {
             console.error('Audio load failed:', url, e);
             return null;
@@ -811,7 +588,7 @@ class AudioManager {
         this.currentMusicConfig = bg.music;
         
         if (this.ctx) {
-            this.createReverb(2.0, (bg.music?.reverb || 0.5) * 5 || 2.0);
+            this.createReverb(2.0, bg.music.reverb * 5 || 2.0);
         }
         this.startBackgroundMusic();
     }
@@ -865,7 +642,7 @@ class AudioManager {
 
     playEatSound() {
         const bg = BACKGROUNDS.find(b => b.id === currentBgId);
-        if (bg?.sfx?.eat && this.playExternalSound(bg.sfx.eat)) return;
+        if (bg?.isMod && bg.sfx?.eat && this.playExternalSound(bg.sfx.eat)) return;
         this.init();
         const now = this.ctx.currentTime;
         // Harmonic blip
@@ -875,7 +652,7 @@ class AudioManager {
 
     playCoinSound() {
         const bg = BACKGROUNDS.find(b => b.id === currentBgId);
-        if (bg?.sfx?.coin && this.playExternalSound(bg.sfx.coin)) return;
+        if (bg?.isMod && bg.sfx?.coin && this.playExternalSound(bg.sfx.coin)) return;
         this.init();
         const now = this.ctx.currentTime;
         // "Ding" sound with reverb
@@ -895,7 +672,7 @@ class AudioManager {
 
     playGameOverSound() {
         const bg = BACKGROUNDS.find(b => b.id === currentBgId);
-        if (bg?.sfx?.gameover && this.playExternalSound(bg.sfx.gameover)) return;
+        if (bg?.isMod && bg.sfx?.gameover && this.playExternalSound(bg.sfx.gameover)) return;
         this.init();
         const now = this.ctx.currentTime;
         // Dramatic descent
@@ -926,24 +703,6 @@ class AudioManager {
         this.stopBackgroundMusic();
         
         const config = this.currentMusicConfig || BACKGROUNDS[0].music;
-        if (!config) return;
-
-        // Priority 1: Modded External Audio File
-        if (config.fileName) {
-            // Find mod that contains this asset and is enabled
-            const mod = ModManager.mods.find(m => ModManager.enabledMods.has(m.id) && (m.isSource || m.assets?.[config.fileName]));
-            const buffer = await this.loadExternalAudio(config.fileName, mod?.assets?.[config.fileName]);
-            if (buffer) {
-                this.externalMusicSource = this.ctx.createBufferSource();
-                this.externalMusicSource.buffer = buffer;
-                this.externalMusicSource.loop = true;
-                this.externalMusicSource.connect(this.masterGain);
-                this.externalMusicSource.start(0);
-                return;
-            }
-        }
-
-        // Priority 2: Modded URL (Backward compatibility)
         if (config.externalUrl) {
             const buffer = await this.loadExternalAudio(config.externalUrl);
             if (buffer) {
@@ -956,33 +715,30 @@ class AudioManager {
             }
         }
 
-        // Priority 3: Procedural Tracks
-        if (config.tracks) {
-            let time = this.ctx.currentTime + 0.1;
-            const loop = () => {
-                if (this.currentMusicConfig !== config) return;
-                
-                const longestTrack = Math.max(...config.tracks.map(t => t.sequence.length));
-                
-                config.tracks.forEach(track => {
-                    track.sequence.forEach((freq, i) => {
-                        if (freq === null) return;
-                        const f = config.random ? freq * (0.95 + Math.random() * 0.1) : freq;
-                        const noteTime = time + i * config.speed;
-                        this.playSynth(f, track.type, track.gain, track.filter, config.speed * 0.9, noteTime, {
-                            useReverb: true,
-                            decay: config.speed * 0.5,
-                            sustain: 0.3
-                        });
+        let time = this.ctx.currentTime + 0.1;
+        const loop = () => {
+            if (this.currentMusicConfig !== config) return;
+            
+            const longestTrack = Math.max(...config.tracks.map(t => t.sequence.length));
+            
+            config.tracks.forEach(track => {
+                track.sequence.forEach((freq, i) => {
+                    if (freq === null) return;
+                    const f = config.random ? freq * (0.95 + Math.random() * 0.1) : freq;
+                    const noteTime = time + i * config.speed;
+                    this.playSynth(f, track.type, track.gain, track.filter, config.speed * 0.9, noteTime, {
+                        useReverb: true,
+                        decay: config.speed * 0.5,
+                        sustain: 0.3
                     });
                 });
+            });
 
-                time += longestTrack * config.speed;
-                const delay = (time - this.ctx.currentTime) * 1000;
-                this.musicLoopId = setTimeout(loop, Math.max(0, delay - 100));
-            };
-            loop();
-        }
+            time += longestTrack * config.speed;
+            const delay = (time - this.ctx.currentTime) * 1000;
+            this.musicLoopId = setTimeout(loop, Math.max(0, delay - 100));
+        };
+        loop();
     }
 }
 
@@ -1462,6 +1218,8 @@ function update() {
     // Check coin collision
     const ateCoin = coin && newHeadPos.distanceTo(coin.pos) < 0.1;
 
+    const t = TRANSLATIONS[LanguageManager.current];
+
     if (ateFood) {
         // Growth: we add the head and DON'T remove the tail
         score += 10;
@@ -1675,30 +1433,16 @@ document.getElementById('tab-skins').onclick = () => {
     audioManager.playUiClick();
     document.getElementById('tab-skins').classList.add('active');
     document.getElementById('tab-backgrounds').classList.remove('active');
-    document.getElementById('tab-mods').classList.remove('active');
     document.getElementById('skin-list').style.display = 'grid';
     document.getElementById('bg-list').style.display = 'none';
-    document.getElementById('mod-management').style.display = 'none';
 };
 
 document.getElementById('tab-backgrounds').onclick = () => {
     audioManager.playUiClick();
     document.getElementById('tab-backgrounds').classList.add('active');
     document.getElementById('tab-skins').classList.remove('active');
-    document.getElementById('tab-mods').classList.remove('active');
     document.getElementById('skin-list').style.display = 'none';
     document.getElementById('bg-list').style.display = 'grid';
-    document.getElementById('mod-management').style.display = 'none';
-};
-
-document.getElementById('tab-mods').onclick = () => {
-    audioManager.playUiClick();
-    document.getElementById('tab-mods').classList.add('active');
-    document.getElementById('tab-skins').classList.remove('active');
-    document.getElementById('tab-backgrounds').classList.remove('active');
-    document.getElementById('skin-list').style.display = 'none';
-    document.getElementById('bg-list').style.display = 'none';
-    document.getElementById('mod-management').style.display = 'block';
 };
 
 function updateShopPreview() {
@@ -2002,7 +1746,7 @@ window.onerror = function(message, source, lineno, colno, error) {
 };
 
 // Initialize Mod Manager
-ModManager.init();
+ModManager.loadMods();
 
 // Apply Localization
 LanguageManager.apply();
