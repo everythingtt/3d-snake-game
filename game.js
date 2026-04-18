@@ -844,30 +844,31 @@ pointLight.position.set(10, 10, 10);
 scene.add(pointLight);
 
 // Ground Plane
-const groundGeometry = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE);
-const groundMaterial = new THREE.MeshPhongMaterial({ 
-    color: 0x222222, 
-    transparent: true, 
-    opacity: 0.8,
-    side: THREE.DoubleSide
-});
-const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
-groundMesh.rotation.x = -Math.PI / 2;
-groundMesh.position.y = 0;
-scene.add(groundMesh);
+ const groundGeometry = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE);
+ groundGeometry.computeBoundingBox(); // Ensure geometry is calculated correctly
+ const groundMaterial = new THREE.MeshPhongMaterial({ 
+     color: 0x222222, 
+     transparent: true, 
+     opacity: 0.8,
+     side: THREE.DoubleSide
+ });
+ const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
+ groundMesh.rotation.x = -Math.PI / 2;
+ groundMesh.position.set(0, 0, 0); // Explicit center
+ scene.add(groundMesh);
 
-// Ground Border
-const borderGeometry = new THREE.EdgesGeometry(groundGeometry);
-const borderMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2 });
-const borderMesh = new THREE.LineSegments(borderGeometry, borderMaterial);
-borderMesh.rotation.x = -Math.PI / 2;
-borderMesh.position.y = 0.01; // Slightly above ground
-scene.add(borderMesh);
+ // Ground Border
+ const borderGeometry = new THREE.EdgesGeometry(groundGeometry);
+ const borderMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2 });
+ const borderMesh = new THREE.LineSegments(borderGeometry, borderMaterial);
+ borderMesh.rotation.x = -Math.PI / 2;
+ borderMesh.position.set(0, 0.01, 0); // Explicit center and slight offset
+ scene.add(borderMesh);
 
-// Grid helper
-const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x888888, 0x444444);
-gridHelper.position.y = 0.02; // Slightly above border
-scene.add(gridHelper);
+ // Grid helper
+ const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x888888, 0x444444);
+ gridHelper.position.set(0, 0.02, 0); // Explicit center and slight offset
+ scene.add(gridHelper);
 
 // Starfield background
 function createStarfield() {
@@ -1767,17 +1768,18 @@ function renderModList() {
 }
 
 // Touch controls setup
-if (isTouchDevice) {
-    document.getElementById('touch-controls').style.display = 'flex';
-    document.getElementById('up-btn').ontouchstart = (e) => { e.preventDefault(); handleDirection(0, 0, -1); };
-    document.getElementById('down-btn').ontouchstart = (e) => { e.preventDefault(); handleDirection(0, 0, 1); };
-    document.getElementById('left-btn').ontouchstart = (e) => { e.preventDefault(); handleDirection(-1, 0, 0); };
-    document.getElementById('right-btn').ontouchstart = (e) => { e.preventDefault(); handleDirection(1, 0, 0); };
-    
-    // Adjust camera for mobile
-    camera.position.set(0, 15, 25);
-    camera.lookAt(0, 0, 0);
-}
+ if (isTouchDevice) {
+     document.getElementById('touch-controls').style.display = 'flex';
+     document.getElementById('up-btn').ontouchstart = (e) => { e.preventDefault(); handleDirection(0, 0, -1); };
+     document.getElementById('down-btn').ontouchstart = (e) => { e.preventDefault(); handleDirection(0, 0, 1); };
+     document.getElementById('left-btn').ontouchstart = (e) => { e.preventDefault(); handleDirection(-1, 0, 0); };
+     document.getElementById('right-btn').ontouchstart = (e) => { e.preventDefault(); handleDirection(1, 0, 0); };
+     
+     // Bird's eye-view for mobile
+     camera.position.set(0, 30, 0);
+     camera.lookAt(0, 0, 0);
+     controls.enableRotate = false; // Disable rotation for better bird's eye experience
+ }
 
 function handleDirection(x, y, z) {
     if (z !== 0 && direction.z === 0) nextDirection.set(x, y, z);
@@ -1845,17 +1847,24 @@ function onKeyDown(event) {
 }
 
 function animate() {
-    requestAnimationFrame(animate);
-    update();
-    updateParticles();
-    animateDecorativeObjects(decorativeObjects);
-    
-    if (snake.length > 0) {
-        const headPos = snake[0].pos;
-        const targetPos = headPos.clone().add(new THREE.Vector3(0, 10, 20));
-        camera.position.lerp(targetPos, 0.05);
-        controls.target.lerp(headPos, 0.1);
-    }
+     requestAnimationFrame(animate);
+     update();
+     updateParticles();
+     animateDecorativeObjects(decorativeObjects);
+     
+     if (snake.length > 0) {
+         const headPos = snake[0].pos;
+         if (isTouchDevice) {
+             // Static bird's eye view for mobile
+             camera.position.lerp(new THREE.Vector3(0, 30, 0), 0.05);
+             controls.target.lerp(new THREE.Vector3(0, 0, 0), 0.1);
+         } else {
+             // Dynamic trailing camera for desktop
+             const targetPos = headPos.clone().add(new THREE.Vector3(0, 10, 20));
+             camera.position.lerp(targetPos, 0.05);
+             controls.target.lerp(headPos, 0.1);
+         }
+     }
 
     // Animate starfield slightly
     if (starfield) {
