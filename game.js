@@ -8,19 +8,162 @@ const INITIAL_SNAKE_LENGTH = 3;
 const INITIAL_MOVE_INTERVAL = 200;
 const MIN_MOVE_INTERVAL = 110;
 
+const TRANSLATIONS = {
+    en: {
+        game_title: "3D Snake Game",
+        space_journey: "Space Journey",
+        controls: "Use Arrow Keys to move",
+        score: "Score",
+        high: "High",
+        coins: "Coins",
+        start_game: "Start Game",
+        open_shop: "Open Shop",
+        skins: "Skins",
+        backgrounds: "Backgrounds",
+        back_to_menu: "Back to Menu",
+        owned: "OWNED",
+        not_enough_coins: "Not enough coins!",
+        cheater_speed: "Cheater! Speed manipulation detected.",
+        cheater_tamper: "Cheater! Value tampering detected.",
+        classic_green: "Classic Green",
+        neon_blue: "Neon Blue",
+        lava_flow: "Lava Flow",
+        golden_midas: "Golden Midas",
+        void_walker: "Void Walker",
+        matrix_code: "Matrix Code",
+        deep_space: "Deep Space",
+        neon_city: "Neon City",
+        sunset_grid: "Sunset Grid",
+        matrix_void: "Matrix Void",
+        hellscape: "Hellscape",
+        event_horizon: "Event Horizon",
+        mystery_void: "Mystery Void"
+    },
+    ar: {
+        game_title: "لعبة الثعبان ثلاثية الأبعاد",
+        space_journey: "رحلة الفضاء",
+        controls: "استخدم مفاتيح الأسهم للتحرك",
+        score: "النتيجة",
+        high: "الأعلى",
+        coins: "العملات",
+        start_game: "ابدأ اللعبة",
+        open_shop: "افتح المتجر",
+        skins: "الأشكال",
+        backgrounds: "الخلفيات",
+        back_to_menu: "العودة للقائمة",
+        owned: "ممتلك",
+        not_enough_coins: "ليس لديك عملات كافية!",
+        cheater_speed: "غشاش! تم كشف التلاعب بالسرعة.",
+        cheater_tamper: "غشاش! تم كشف التلاعب بالقيم.",
+        classic_green: "الأخضر الكلاسيكي",
+        neon_blue: "أزرق النيون",
+        lava_flow: "تدفق الحمم",
+        golden_midas: "ميداس الذهبي",
+        void_walker: "مشاة الفراغ",
+        matrix_code: "شفرة المصفوفة",
+        deep_space: "الفضاء العميق",
+        neon_city: "مدينة النيون",
+        sunset_grid: "شبكة الغروب",
+        matrix_void: "فراغ المصفوفة",
+        hellscape: "مشهد الجحيم",
+        event_horizon: "أفق الحدث",
+        mystery_void: "الفراغ الغامض"
+    },
+    zh: {
+        game_title: "3D 贪吃蛇游戏",
+        space_journey: "太空之旅",
+        controls: "使用方向键移动",
+        score: "分数",
+        high: "最高分",
+        coins: "金币",
+        start_game: "开始游戏",
+        open_shop: "打开商店",
+        skins: "皮肤",
+        backgrounds: "背景",
+        back_to_menu: "返回菜单",
+        owned: "已拥有",
+        not_enough_coins: "金币不足！",
+        cheater_speed: "作弊者！检测到速度篡改。",
+        cheater_tamper: "作弊者！检测到数值篡改。",
+        classic_green: "经典绿",
+        neon_blue: "霓虹蓝",
+        lava_flow: "岩浆流",
+        golden_midas: "黄金迈达斯",
+        void_walker: "虚空行者",
+        matrix_code: "黑客帝国代码",
+        deep_space: "深空",
+        neon_city: "霓虹之城",
+        sunset_grid: "日落网格",
+        matrix_void: "矩阵虚空",
+        hellscape: "地狱景观",
+        event_horizon: "事件视界",
+        mystery_void: "神秘虚空"
+    }
+};
+
+let currentLang = 'en';
+
+function setLanguage(lang) {
+    if (!TRANSLATIONS[lang]) lang = 'en';
+    currentLang = lang;
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    
+    // Update select element if it exists
+    const select = document.getElementById('lang-select');
+    if (select) select.value = lang;
+    
+    // Update static text
+    document.querySelectorAll('[data-t]').forEach(el => {
+        const key = el.getAttribute('data-t');
+        if (TRANSLATIONS[lang][key]) {
+            el.innerText = TRANSLATIONS[lang][key];
+        }
+    });
+
+    // Update shop lists if they are already initialized
+    if (document.getElementById('shop-overlay').style.display !== 'none') {
+        updateShopList();
+    }
+    
+    updateUI();
+}
+
+async function detectLanguage() {
+    try {
+        // Use a faster/simpler API for static sites
+        const response = await fetch('https://ipapi.co/json/').catch(() => null);
+        if (response && response.ok) {
+            const data = await response.json();
+            const country = data.country_code;
+            if (country === 'CN') {
+                setLanguage('zh');
+            } else if (['SA', 'AE', 'EG', 'JO', 'KW', 'QA', 'BH', 'OM', 'LB', 'IQ', 'DZ', 'MA', 'TN', 'LY', 'SD', 'YE'].includes(country)) {
+                setLanguage('ar');
+            } else {
+                setLanguage('en');
+            }
+        } else {
+            setLanguage('en');
+        }
+    } catch (e) {
+        setLanguage('en');
+    }
+}
+
 // Skins configuration
 const SKINS = [
-    { id: 'classic', name: 'Classic Green', head: 0x00ff00, body: 0x008800, price: 0 },
-    { id: 'neon', name: 'Neon Blue', head: 0x00ffff, body: 0x0000ff, price: 50 },
-    { id: 'lava', name: 'Lava Flow', head: 0xff4400, body: 0x880000, price: 100 },
-    { id: 'gold', name: 'Golden Midas', head: 0xffff00, body: 0xaa8800, price: 250 },
-    { id: 'void', name: 'Void Walker', head: 0xff00ff, body: 0x440044, price: 500 },
-    { id: 'matrix', name: 'Matrix Code', head: 0x00ff00, body: 0x003300, emissive: 0x00ff00, price: 1000 }
+    { id: 'classic', nameKey: 'classic_green', head: 0x00ff00, body: 0x008800, price: 0 },
+    { id: 'neon', nameKey: 'neon_blue', head: 0x00ffff, body: 0x0000ff, price: 50 },
+    { id: 'lava', nameKey: 'lava_flow', head: 0xff4400, body: 0x880000, price: 100 },
+    { id: 'gold', nameKey: 'golden_midas', head: 0xffff00, body: 0xaa8800, price: 250 },
+    { id: 'void', nameKey: 'void_walker', head: 0xff00ff, body: 0x440044, price: 500 },
+    { id: 'matrix', nameKey: 'matrix_code', head: 0x00ff00, body: 0x003300, emissive: 0x00ff00, price: 1000 }
 ];
 
 const BACKGROUNDS = [
     { 
-        id: 'space', name: 'Deep Space', color: 0x000000, stars: true, grid: 0x444444, fog: 0x000000, envType: 'planets', price: 0,
+        id: 'space', nameKey: 'deep_space', color: 0x000000, stars: true, grid: 0x444444, fog: 0x000000, envType: 'planets', price: 0,
         music: { 
             speed: 0.25,
             reverb: 0.6,
@@ -31,7 +174,7 @@ const BACKGROUNDS = [
         }
     },
     { 
-        id: 'neon', name: 'Neon City', color: 0x000022, stars: false, grid: 0x00ffff, fog: 0x000044, envType: 'cubes', price: 100,
+        id: 'neon', nameKey: 'neon_city', color: 0x000022, stars: false, grid: 0x00ffff, fog: 0x000044, envType: 'cubes', price: 100,
         music: { 
             speed: 0.15,
             reverb: 0.3,
@@ -42,7 +185,7 @@ const BACKGROUNDS = [
         }
     },
     { 
-        id: 'sunset', name: 'Sunset Grid', color: 0x220022, stars: false, grid: 0xff00ff, fog: 0x440044, envType: 'sun', price: 200,
+        id: 'sunset', nameKey: 'sunset_grid', color: 0x220022, stars: false, grid: 0xff00ff, fog: 0x440044, envType: 'sun', price: 200,
         music: { 
             speed: 0.5,
             reverb: 0.5,
@@ -53,7 +196,7 @@ const BACKGROUNDS = [
         }
     },
     { 
-        id: 'matrix', name: 'Matrix Void', color: 0x000500, stars: true, grid: 0x00ff00, fog: 0x001100, envType: 'code', price: 500,
+        id: 'matrix', nameKey: 'matrix_void', color: 0x000500, stars: true, grid: 0x00ff00, fog: 0x001100, envType: 'code', price: 500,
         music: { 
             speed: 0.1,
             reverb: 0.4,
@@ -64,7 +207,7 @@ const BACKGROUNDS = [
         }
     },
     { 
-        id: 'hell', name: 'Hellscape', color: 0x220000, stars: false, grid: 0xff4400, fog: 0x440000, envType: 'lava', price: 300,
+        id: 'hell', nameKey: 'hellscape', color: 0x220000, stars: false, grid: 0xff4400, fog: 0x440000, envType: 'lava', price: 300,
         music: { 
             speed: 1.0,
             reverb: 0.8,
@@ -75,7 +218,7 @@ const BACKGROUNDS = [
         }
     },
     { 
-        id: 'blackhole', name: 'Event Horizon', color: 0x000000, stars: true, grid: 0x333333, fog: 0x110022, envType: 'blackhole', price: 800,
+        id: 'blackhole', nameKey: 'event_horizon', color: 0x000000, stars: true, grid: 0x333333, fog: 0x110022, envType: 'blackhole', price: 800,
         music: { 
             speed: 0.2,
             reverb: 0.9,
@@ -87,7 +230,7 @@ const BACKGROUNDS = [
         }
     },
     { 
-        id: 'mystery', name: 'Mystery Void', color: 0x111111, stars: true, grid: 0xffffff, fog: 0x222222, envType: 'custom', price: 1000,
+        id: 'mystery', nameKey: 'mystery_void', color: 0x111111, stars: true, grid: 0xffffff, fog: 0x222222, envType: 'custom', price: 1000,
         music: { 
             speed: 0.2,
             reverb: 0.7,
@@ -1028,14 +1171,14 @@ function update() {
     
     // Validate move timing (anti-speed hack)
     if (lastMoveTime > 0 && !Security.validateMove(lastMoveTime, moveInterval)) {
-        endGame('Cheater! Speed manipulation detected.');
+        endGame('cheater_speed');
         cheaterDetected = true;
         return;
     }
     
     // Check integrity of values
     if (!Security.checkIntegrity(score, coins)) {
-        endGame('Cheater! Value tampering detected.');
+        endGame('cheater_tamper');
         cheaterDetected = true;
         return;
     }
@@ -1111,7 +1254,9 @@ function endGame(reason = null) {
     audioManager.playGameOverSound();
     
     if (reason) {
-        alert(reason);
+        // Map common error keys if they are passed
+        const translatedReason = TRANSLATIONS[currentLang][reason] || reason;
+        alert(translatedReason);
         // If they cheated, reset their coins and highscore
         if (cheaterDetected) {
             coins = 0;
@@ -1194,7 +1339,7 @@ function selectSkin(skin) {
             updateShopList();
         } else {
             audioManager.playErrorSound();
-            alert('Not enough coins!');
+            alert(TRANSLATIONS[currentLang].not_enough_coins);
             return;
         }
     }
@@ -1215,7 +1360,7 @@ function selectBg(bg) {
             updateShopList();
         } else {
             audioManager.playErrorSound();
-            alert('Not enough coins!');
+            alert(TRANSLATIONS[currentLang].not_enough_coins);
             return;
         }
     }
@@ -1233,11 +1378,15 @@ function updateShopList() {
     const bgList = document.getElementById('bg-list');
     if (!skinList || !bgList) return;
 
+    const ownedText = TRANSLATIONS[currentLang].owned;
+    const coinsText = TRANSLATIONS[currentLang].coins;
+
     skinList.innerHTML = '';
     SKINS.forEach(skin => {
         const item = document.createElement('div');
+        const name = TRANSLATIONS[currentLang][skin.nameKey] || skin.id;
         item.className = `skin-item ${ownedSkins.includes(skin.id) ? '' : 'locked'} ${currentSkinId === skin.id ? 'selected' : ''}`;
-        item.innerHTML = `<h3>${skin.name}</h3><div class="price">${ownedSkins.includes(skin.id) ? 'OWNED' : skin.price + ' Coins'}</div>`;
+        item.innerHTML = `<h3>${name}</h3><div class="price">${ownedSkins.includes(skin.id) ? ownedText : skin.price + ' ' + coinsText}</div>`;
         item.onclick = () => selectSkin(skin);
         item.onmouseenter = () => audioManager.playUiHover();
         skinList.appendChild(item);
@@ -1246,8 +1395,9 @@ function updateShopList() {
     bgList.innerHTML = '';
     BACKGROUNDS.forEach(bg => {
         const item = document.createElement('div');
+        const name = TRANSLATIONS[currentLang][bg.nameKey] || bg.id;
         item.className = `bg-item ${ownedBgs.includes(bg.id) ? '' : 'locked'} ${currentBgId === bg.id ? 'selected' : ''}`;
-        item.innerHTML = `<h3>${bg.name}</h3><div class="price">${ownedBgs.includes(bg.id) ? 'OWNED' : bg.price + ' Coins'}</div>`;
+        item.innerHTML = `<h3>${name}</h3><div class="price">${ownedBgs.includes(bg.id) ? ownedText : bg.price + ' ' + coinsText}</div>`;
         item.onclick = () => selectBg(bg);
         item.onmouseenter = () => audioManager.playUiHover();
         bgList.appendChild(item);
@@ -1513,6 +1663,11 @@ document.getElementById('mute-btn').onclick = () => {
     audioManager.playUiClick();
 };
 
+document.getElementById('lang-select').onchange = (e) => {
+    setLanguage(e.target.value);
+    audioManager.playUiClick();
+};
+
 // Add hover sounds to all buttons
 document.querySelectorAll('button').forEach(btn => {
     btn.onmouseenter = () => audioManager.playUiHover();
@@ -1572,3 +1727,6 @@ window.onerror = function(message, source, lineno, colno, error) {
 
 // Initialize Mod Manager
 ModManager.loadMods();
+
+// Detect initial language based on IP
+detectLanguage();
