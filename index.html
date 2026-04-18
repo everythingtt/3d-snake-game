@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Space Snake: A Journey Through the Void</title>
+    <title>3D Snake Game - Space Journey</title>
     
     <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐍</text></svg>">
 
     <!-- OpenGraph Metadata -->
-    <meta property="og:title" content="3D Space Snake: A Journey Through the Void">
-    <meta property="og:description" content="Dodge stars, hunt energy, and evolve your snake across the cosmic grid. A simple, trippy 3D escape.">
+    <meta property="og:title" content="3D Snake Game - Space Journey">
+    <meta property="og:description" content="A thrilling 3D snake experience set in a deep space starfield. Collect energy spheres and grow your snake!">
     <meta property="og:type" content="website">
-    <meta property="og:image" content="https://raw.githubusercontent.com/mrdoob/three.js/master/files/icon.png">
+    <meta property="og:image" content="https://raw.githubusercontent.com/mrdoob/three.js/master/files/icon.png"> <!-- Placeholder icon since we don't have a hosted screenshot -->
     
     <!-- Twitter Metadata -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Lost in the Grid?">
-    <meta name="twitter:description" content="Guide your snake through the stars. Procedural beats, neon vibes, and the endless void.">
+    <meta name="twitter:title" content="3D Snake Game - Space Journey">
+    <meta name="twitter:description" content="Control the snake in a 3D starfield. High scores, particle effects, and procedural music!">
 
     <link rel="stylesheet" href="style.css">
     <script type="importmap">
@@ -32,35 +32,35 @@
 </head>
 <body>
     <div id="info">
-        <h1>Space Snake</h1>
-        <p>Steer with your Arrow Keys</p>
-        <p>Journey: <span id="score">0</span> | Best: <span id="high-score">0</span> | Energy: <span id="coins">0</span></p>
+        <h1>3D Snake Game</h1>
+        <p>Use Arrow Keys to move</p>
+        <p>Score: <span id="score">0</span> | High: <span id="high-score">0</span> | Coins: <span id="coins">0</span></p>
         <button id="mute-btn" class="icon-btn">🔊</button>
     </div>
     <div id="overlay">
         <div id="menu">
-            <h1>Lost in the Grid</h1>
-            <p>Evolve through the void.</p>
-            <div id="high-score-display">Personal Best: <span id="menu-high-score">0</span></div>
-            <div id="coin-display">Energy Stored: <span id="menu-coins">0</span></div>
+            <h1>3D Snake</h1>
+            <p>Space Journey</p>
+            <div id="high-score-display">High Score: <span id="menu-high-score">0</span></div>
+            <div id="coin-display">Coins: <span id="menu-coins">0</span></div>
             <div class="menu-buttons">
-                <button id="start-btn">Begin Journey</button>
-                <button id="shop-btn">The Vault</button>
+                <button id="start-btn">Start Game</button>
+                <button id="shop-btn">Open Shop</button>
             </div>
         </div>
     </div>
     <div id="shop-overlay" style="display: none;">
         <div id="shop">
             <div class="shop-tabs">
-                <button id="tab-skins" class="active">Evolutions</button>
-                <button id="tab-backgrounds">Dimensions</button>
+                <button id="tab-skins" class="active">Skins</button>
+                <button id="tab-backgrounds">Backgrounds</button>
             </div>
             <div id="skin-preview-container"></div>
             <div id="shop-content">
                 <div id="skin-list"></div>
                 <div id="bg-list" style="display: none;"></div>
             </div>
-            <button id="close-shop-btn">Return to Void</button>
+            <button id="close-shop-btn">Back to Menu</button>
         </div>
     </div>
     <div id="game-container"></div>
