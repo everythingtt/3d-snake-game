@@ -529,6 +529,7 @@ let gameOver = false;
 let gameStarted = false;
 let isPaused = false;
 let isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+let isLowPerformance = false;
 let particles = [];
 let decorativeObjects = [];
 let cheaterDetected = false;
@@ -873,10 +874,11 @@ scene.add(pointLight);
 // Starfield background
 function createStarfield() {
     if (starfield) scene.remove(starfield);
+    const starCount = isLowPerformance ? 500 : 2000;
     const starGeometry = new THREE.BufferGeometry();
     const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1 });
     const starVertices = [];
-    for (let i = 0; i < 2000; i++) {
+    for (let i = 0; i < starCount; i++) {
         const x = (Math.random() - 0.5) * 500;
         const y = (Math.random() - 0.5) * 500;
         const z = (Math.random() - 0.5) * 500;
@@ -943,6 +945,16 @@ function updateBackground() {
     // Create new decorative objects based on environment
     switch (bg.envType) {
         case 'planets':
+            if (isLowPerformance) {
+                // Simplified planets for performance
+                const earthGeom = new THREE.SphereGeometry(8, 16, 16);
+                const earthMat = new THREE.MeshPhongMaterial({ map: planetTextures.earthDay });
+                const earth = new THREE.Mesh(earthGeom, earthMat);
+                earth.position.set(-40, 10, -40);
+                scene.add(earth);
+                decorativeObjects.push({ mesh: earth, rotationSpeed: 0.002 });
+                break;
+            }
             // Earth with Day/Night Shader
             const earthGeom = new THREE.SphereGeometry(8, 64, 64);
             const earthMat = new THREE.ShaderMaterial({
@@ -1013,7 +1025,8 @@ function updateBackground() {
             }
             break;
         case 'cubes':
-            for (let i = 0; i < 20; i++) {
+            const cubeCount = isLowPerformance ? 5 : 20;
+            for (let i = 0; i < cubeCount; i++) {
                 const geometry = new THREE.BoxGeometry(2, 2, 2);
                 const material = new THREE.MeshPhongMaterial({ color: 0x00ffff, wireframe: true });
                 const mesh = new THREE.Mesh(geometry, material);
@@ -1150,6 +1163,7 @@ updateBackground();
 
 // Particles
 function createParticle(pos, color) {
+    if (isLowPerformance) return; // Skip particles in low performance mode
     const geometry = new THREE.SphereGeometry(0.1, 8, 8);
     const material = new THREE.MeshBasicMaterial({ color: color });
     const particle = new THREE.Mesh(geometry, material);
@@ -1723,6 +1737,16 @@ function animateShop() {
         shopRenderer.render(shopScene, shopCamera);
     }
 }
+
+document.getElementById('perf-btn').onclick = () => {
+    isLowPerformance = !isLowPerformance;
+    audioManager.playUiClick();
+    document.getElementById('perf-btn').style.background = isLowPerformance ? '#ffcc00' : 'rgba(255, 255, 255, 0.1)';
+    document.getElementById('perf-btn').style.color = isLowPerformance ? '#000' : '#fff';
+    createStarfield();
+    updateBackground();
+    Notifications.show(isLowPerformance ? "PERFORMANCE MODE: ON" : "PERFORMANCE MODE: OFF", 'warning');
+};
 
 document.getElementById('pause-btn').onclick = togglePause;
 
