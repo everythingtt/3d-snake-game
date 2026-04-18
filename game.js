@@ -163,7 +163,6 @@ const LanguageManager = {
         if (info) {
             info.querySelector('h1').innerText = t.title;
             info.querySelector('p').innerText = t.move_hint;
-            // The score line is complex, we target the spans directly in updateUI
         }
         
         const menu = document.getElementById('menu');
@@ -931,7 +930,8 @@ class AudioManager {
 
         // Priority 1: Modded External Audio File
         if (config.fileName) {
-            const mod = ModManager.mods.find(m => m.enabled && m.assets?.[config.fileName]);
+            // Find mod that contains this asset and is enabled
+            const mod = ModManager.mods.find(m => ModManager.enabledMods.has(m.id) && (m.isSource || m.assets?.[config.fileName]));
             const buffer = await this.loadExternalAudio(config.fileName, mod?.assets?.[config.fileName]);
             if (buffer) {
                 this.externalMusicSource = this.ctx.createBufferSource();

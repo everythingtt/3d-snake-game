@@ -98,7 +98,7 @@ This example demonstrates how to reference assets within the structured director
 3. Click **Upload Mod Folder** and select your prepared folder.
 4. Toggle the switch to **Enable** your mod. The game will reload to apply your assets!
 
-## �‍💻 Source-Level Modding (Development)
+## 👩‍💻 Source-Level Modding (Development)
 
 If you are a developer or want to bundle mods directly with the game source, you can use the physical `mods/` directory.
 
@@ -118,7 +118,7 @@ If you are a developer or want to bundle mods directly with the game source, you
 - **Developer Friendly**: Perfect for testing mods during development without re-uploading folders.
 - **Direct Path Support**: You can use relative paths within your JSON files as usual.
 
-## ��️ Technical Stack
+## 🛠️ Technical Stack
 
 - **Engine**: [Three.js](https://threejs.org/)
 - **Audio**: Web Audio API (Custom Procedural Synth)
