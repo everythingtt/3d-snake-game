@@ -19,6 +19,43 @@ body {
     pointer-events: auto;
 }
 
+.top-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 10px;
+}
+
+#lang-switcher {
+    display: flex;
+    gap: 5px;
+}
+
+#lang-switcher button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+#lang-switcher button:hover {
+    background: rgba(0, 255, 0, 0.3);
+}
+
+body[dir="rtl"] {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body[dir="rtl"] #notification-container {
+    right: auto;
+    left: 20px;
+}
+
 .icon-btn {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);

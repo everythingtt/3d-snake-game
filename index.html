@@ -35,35 +35,46 @@
 </head>
 <body>
     <div id="info">
-        <h1>3D Snake Game</h1>
-        <p>Use Arrow Keys to move</p>
-        <p>Score: <span id="score">0</span> | High: <span id="high-score">0</span> | Coins: <span id="coins">0</span></p>
-        <button id="mute-btn" class="icon-btn">🔊</button>
+        <h1 data-t="title">3D Snake Game</h1>
+        <p data-t="move_hint">Use Arrow Keys to move</p>
+        <p>
+            <span data-t="score">Score</span>: <span id="score">0</span> | 
+            <span data-t="high">High</span>: <span id="high-score">0</span> | 
+            <span data-t="coins">Coins</span>: <span id="coins">0</span>
+        </p>
+        <div class="top-controls">
+            <div id="lang-switcher">
+                <button onclick="LanguageManager.set('en')" title="English">EN</button>
+                <button onclick="LanguageManager.set('ar')" title="العربية">AR</button>
+                <button onclick="LanguageManager.set('zh')" title="中文">ZH</button>
+            </div>
+            <button id="mute-btn" class="icon-btn">🔊</button>
+        </div>
     </div>
     <div id="overlay">
         <div id="menu">
-            <h1>3D Snake</h1>
-            <p>Space Journey</p>
-            <div id="high-score-display">High Score: <span id="menu-high-score">0</span></div>
-            <div id="coin-display">Coins: <span id="menu-coins">0</span></div>
+            <h1 data-t="title">3D Snake</h1>
+            <p data-t="subtitle">Space Journey</p>
+            <div id="high-score-display"><span data-t="high">High Score</span>: <span id="menu-high-score">0</span></div>
+            <div id="coin-display"><span data-t="coins">Coins</span>: <span id="menu-coins">0</span></div>
             <div class="menu-buttons">
-                <button id="start-btn">Start Game</button>
-                <button id="shop-btn">Open Shop</button>
+                <button id="start-btn" data-t="start">Start Game</button>
+                <button id="shop-btn" data-t="shop">Open Shop</button>
             </div>
         </div>
     </div>
     <div id="shop-overlay" style="display: none;">
         <div id="shop">
             <div class="shop-tabs">
-                <button id="tab-skins" class="active">Skins</button>
-                <button id="tab-backgrounds">Backgrounds</button>
+                <button id="tab-skins" class="active" data-t="skins">Skins</button>
+                <button id="tab-backgrounds" data-t="backgrounds">Backgrounds</button>
             </div>
             <div id="skin-preview-container"></div>
             <div id="shop-content">
                 <div id="skin-list"></div>
                 <div id="bg-list" style="display: none;"></div>
             </div>
-            <button id="close-shop-btn">Back to Menu</button>
+            <button id="close-shop-btn" data-t="back">Back to Menu</button>
         </div>
     </div>
     <div id="game-container"></div>

@@ -2,6 +2,163 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
+// Localization Configuration
+const TRANSLATIONS = {
+    en: {
+        title: "3D Snake Game",
+        subtitle: "Space Journey",
+        move_hint: "Use Arrow Keys to move",
+        score: "Score",
+        high: "High",
+        coins: "Coins",
+        start: "Start Game",
+        shop: "Open Shop",
+        skins: "Skins",
+        backgrounds: "Backgrounds",
+        back: "Back to Menu",
+        owned: "OWNED",
+        buy: "Buy",
+        not_enough: "Not enough coins!",
+        cheater_speed: "Cheater! Speed manipulation detected.",
+        cheater_value: "Cheater! Value tampering detected.",
+        system_glitch: "SYSTEM GLITCH",
+        skins_list: {
+            classic: "Classic Green",
+            neon: "Neon Blue",
+            lava: "Lava Flow",
+            gold: "Golden Midas",
+            void: "Void Walker",
+            matrix: "Matrix Code"
+        },
+        bg_list: {
+            space: "Deep Space",
+            neon: "Neon City",
+            sunset: "Sunset Grid",
+            matrix: "Matrix Void",
+            hellscape: "Hellscape",
+            blackhole: "Event Horizon",
+            mystery: "Mystery Void"
+        }
+    },
+    ar: {
+        title: "لعبة الثعبان 3D",
+        subtitle: "رحلة الفضاء",
+        move_hint: "استخدم مفاتيح الأسهم للتحرك",
+        score: "النتيجة",
+        high: "الأعلى",
+        coins: "العملات",
+        start: "بدء اللعبة",
+        shop: "المتجر",
+        skins: "الأشكال",
+        backgrounds: "الخلفيات",
+        back: "العودة للقائمة",
+        owned: "ممتلك",
+        buy: "شراء",
+        not_enough: "ليس لديك عملات كافية!",
+        cheater_speed: "غشاش! تم اكتشاف تلاعب بالسرعة.",
+        cheater_value: "غشاش! تم اكتشاف تلاعب بالقيم.",
+        system_glitch: "خلل في النظام",
+        skins_list: {
+            classic: "الأخضر الكلاسيكي",
+            neon: "النيون الأزرق",
+            lava: "تدفق الحمم",
+            gold: "ميداس الذهبي",
+            void: "ماش الفراغ",
+            matrix: "كود الماتريكس"
+        },
+        bg_list: {
+            space: "الفضاء العميق",
+            neon: "مدينة النيون",
+            sunset: "شبكة الغروب",
+            matrix: "فراغ الماتريكس",
+            hellscape: "مشهد الجحيم",
+            blackhole: "أفق الحدث",
+            mystery: "فراغ الغموض"
+        }
+    },
+    zh: {
+        title: "3D 贪吃蛇",
+        subtitle: "太空之旅",
+        move_hint: "使用方向键移动",
+        score: "分数",
+        high: "最高分",
+        coins: "硬币",
+        start: "开始游戏",
+        shop: "商店",
+        skins: "皮肤",
+        backgrounds: "背景",
+        back: "返回菜单",
+        owned: "已拥有",
+        buy: "购买",
+        not_enough: "硬币不足！",
+        cheater_speed: "作弊！检测到速度异常。",
+        cheater_value: "作弊！检测到数值篡改。",
+        system_glitch: "系统故障",
+        skins_list: {
+            classic: "经典绿",
+            neon: "霓虹蓝",
+            lava: "熔岩流",
+            gold: "黄金米达斯",
+            void: "虚空行者",
+            matrix: "黑客帝国",
+        },
+        bg_list: {
+            space: "深空",
+            neon: "霓虹城",
+            sunset: "日落网格",
+            matrix: "矩阵虚空",
+            hellscape: "地狱景观",
+            blackhole: "事件视界",
+            mystery: "神秘虚空"
+        }
+    }
+};
+
+const LanguageManager = {
+    current: Security.load('snake3d_lang_secure', 'en'),
+    
+    set(lang) {
+        if (!TRANSLATIONS[lang]) return;
+        this.current = lang;
+        Security.save('snake3d_lang_secure', lang);
+        this.apply();
+    },
+
+    apply() {
+        const t = TRANSLATIONS[this.current];
+        document.documentElement.lang = this.current;
+        document.body.dir = this.current === 'ar' ? 'rtl' : 'ltr';
+        
+        // Update static UI
+        document.querySelectorAll('[data-t]').forEach(el => {
+            const key = el.getAttribute('data-t');
+            if (t[key]) el.innerText = t[key];
+        });
+
+        // Update score labels (template strings)
+        this.updateHUD();
+        
+        // Update dynamic lists
+        if (typeof updateShopList === 'function') updateShopList();
+    },
+
+    updateHUD() {
+        const t = TRANSLATIONS[this.current];
+        const info = document.getElementById('info');
+        if (info) {
+            info.querySelector('h1').innerText = t.title;
+            info.querySelector('p').innerText = t.move_hint;
+            // The score line is complex, we target the spans directly in updateUI
+        }
+        
+        const menu = document.getElementById('menu');
+        if (menu) {
+            menu.querySelector('h1').innerText = t.title;
+            menu.querySelector('p').innerText = t.subtitle;
+        }
+    }
+};
+
 // Game constants
 const GRID_SIZE = 20;
 const INITIAL_SNAKE_LENGTH = 3;
@@ -1024,18 +1181,20 @@ function update() {
     if (gameOver || !gameStarted || cheaterDetected) return;
 
     const currentTime = Date.now();
+    const t = TRANSLATIONS[LanguageManager.current];
+
     if (currentTime - lastMoveTime < moveInterval - 10) return; // Basic rate check
     
     // Validate move timing (anti-speed hack)
     if (lastMoveTime > 0 && !Security.validateMove(lastMoveTime, moveInterval)) {
-        endGame('Cheater! Speed manipulation detected.');
+        endGame(t.cheater_speed);
         cheaterDetected = true;
         return;
     }
     
     // Check integrity of values
     if (!Security.checkIntegrity(score, coins)) {
-        endGame('Cheater! Value tampering detected.');
+        endGame(t.cheater_value);
         cheaterDetected = true;
         return;
     }
@@ -1058,6 +1217,8 @@ function update() {
     const ateFood = newHeadPos.distanceTo(food.pos) < 0.1;
     // Check coin collision
     const ateCoin = coin && newHeadPos.distanceTo(coin.pos) < 0.1;
+
+    const t = TRANSLATIONS[LanguageManager.current];
 
     if (ateFood) {
         // Growth: we add the head and DON'T remove the tail
@@ -1109,6 +1270,7 @@ function updateUI() {
 function endGame(reason = null) {
     gameOver = true;
     audioManager.playGameOverSound();
+    const t = TRANSLATIONS[LanguageManager.current];
     
     if (reason) {
         alert(reason);
@@ -1184,6 +1346,7 @@ function initShopPreview() {
 }
 
 function selectSkin(skin) {
+    const t = TRANSLATIONS[LanguageManager.current];
     audioManager.playUiClick();
     if (!ownedSkins.includes(skin.id)) {
         if (coins >= skin.price) {
@@ -1194,7 +1357,7 @@ function selectSkin(skin) {
             updateShopList();
         } else {
             audioManager.playErrorSound();
-            alert('Not enough coins!');
+            alert(t.not_enough);
             return;
         }
     }
@@ -1205,6 +1368,7 @@ function selectSkin(skin) {
 }
 
 function selectBg(bg) {
+    const t = TRANSLATIONS[LanguageManager.current];
     audioManager.playUiClick();
     if (!ownedBgs.includes(bg.id)) {
         if (coins >= bg.price) {
@@ -1215,7 +1379,7 @@ function selectBg(bg) {
             updateShopList();
         } else {
             audioManager.playErrorSound();
-            alert('Not enough coins!');
+            alert(t.not_enough);
             return;
         }
     }
@@ -1233,11 +1397,17 @@ function updateShopList() {
     const bgList = document.getElementById('bg-list');
     if (!skinList || !bgList) return;
 
+    const t = TRANSLATIONS[LanguageManager.current];
+
     skinList.innerHTML = '';
     SKINS.forEach(skin => {
         const item = document.createElement('div');
         item.className = `skin-item ${ownedSkins.includes(skin.id) ? '' : 'locked'} ${currentSkinId === skin.id ? 'selected' : ''}`;
-        item.innerHTML = `<h3>${skin.name}</h3><div class="price">${ownedSkins.includes(skin.id) ? 'OWNED' : skin.price + ' Coins'}</div>`;
+        
+        const skinName = skin.isMod ? skin.name : (t.skins_list[skin.id] || skin.name);
+        const priceText = ownedSkins.includes(skin.id) ? t.owned : `${skin.price} ${t.coins}`;
+        
+        item.innerHTML = `<h3>${skinName}</h3><div class="price">${priceText}</div>`;
         item.onclick = () => selectSkin(skin);
         item.onmouseenter = () => audioManager.playUiHover();
         skinList.appendChild(item);
@@ -1247,7 +1417,11 @@ function updateShopList() {
     BACKGROUNDS.forEach(bg => {
         const item = document.createElement('div');
         item.className = `bg-item ${ownedBgs.includes(bg.id) ? '' : 'locked'} ${currentBgId === bg.id ? 'selected' : ''}`;
-        item.innerHTML = `<h3>${bg.name}</h3><div class="price">${ownedBgs.includes(bg.id) ? 'OWNED' : bg.price + ' Coins'}</div>`;
+        
+        const bgName = bg.isMod ? bg.name : (t.bg_list[bg.id] || bg.name);
+        const priceText = ownedBgs.includes(bg.id) ? t.owned : `${bg.price} ${t.coins}`;
+        
+        item.innerHTML = `<h3>${bgName}</h3><div class="price">${priceText}</div>`;
         item.onclick = () => selectBg(bg);
         item.onmouseenter = () => audioManager.playUiHover();
         bgList.appendChild(item);
@@ -1566,9 +1740,13 @@ animate();
 
 // Global Error Handling
 window.onerror = function(message, source, lineno, colno, error) {
-    Notifications.show(`SYSTEM GLITCH: ${message.split(':')[1] || message}`, 'error');
+    const t = TRANSLATIONS[LanguageManager.current];
+    Notifications.show(`${t.system_glitch}: ${message.split(':')[1] || message}`, 'error');
     return false;
 };
 
 // Initialize Mod Manager
 ModManager.loadMods();
+
+// Apply Localization
+LanguageManager.apply();
