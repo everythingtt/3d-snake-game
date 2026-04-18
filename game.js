@@ -23,6 +23,10 @@ const TRANSLATIONS = {
         back_to_menu: "Back to Menu",
         owned: "OWNED",
         not_enough_coins: "Not enough coins!",
+        mod_picker: "Mod Picker",
+        pause: "PAUSED",
+        resume: "RESUME",
+        coins: "Coins",
         cheater_speed: "Cheater! Speed manipulation detected.",
         cheater_tamper: "Cheater! Value tampering detected.",
         classic_green: "Classic Green",
@@ -53,6 +57,10 @@ const TRANSLATIONS = {
         back_to_menu: "العودة للقائمة",
         owned: "ممتلك",
         not_enough_coins: "ليس لديك عملات كافية!",
+        mod_picker: "منتقي التعديلات",
+        pause: "مؤقت",
+        resume: "استئناف",
+        coins: "العملات",
         cheater_speed: "غشاش! تم كشف التلاعب بالسرعة.",
         cheater_tamper: "غشاش! تم كشف التلاعب بالقيم.",
         classic_green: "الأخضر الكلاسيكي",
@@ -83,6 +91,10 @@ const TRANSLATIONS = {
         back_to_menu: "返回菜单",
         owned: "已拥有",
         not_enough_coins: "金币不足！",
+        mod_picker: "模组选择器",
+        pause: "已暂停",
+        resume: "恢复游戏",
+        coins: "金币",
         cheater_speed: "作弊者！检测到速度篡改。",
         cheater_tamper: "作弊者！检测到数值篡改。",
         classic_green: "经典绿",
@@ -305,6 +317,15 @@ const ModManager = {
             }
             const modData = await res.json();
             
+            // New Metadata Requirements
+            const modInfo = {
+                folder,
+                title: modData.title || modData.name || folder,
+                description: modData.description || "No description provided.",
+                banner: modData.banner ? `${basePath}${modData.banner}` : null,
+                favicon: modData.favicon ? `${basePath}${modData.favicon}` : null
+            };
+
             if (modData.skins) {
                 for (const skin of modData.skins) {
                     const skinId = `mod_${folder}_${skin.id}`;
@@ -422,7 +443,12 @@ const ModManager = {
                 }
             }
             
-            this.mods.push({ folder, ...modData });
+            this.mods.push({ folder, ...modData, ...modInfo });
+            
+            // Show Mod Picker button if multiple mods exist
+            if (this.mods.length > 1) {
+                document.getElementById('mod-picker-btn').style.display = 'block';
+            }
             console.log(`Successfully loaded mod: ${modData.name}`);
         } catch (e) {
             console.error(`Failed to load mod from ${folder}:`, e);
@@ -498,6 +524,8 @@ let lastMoveTime = 0;
 let moveInterval = INITIAL_MOVE_INTERVAL;
 let gameOver = false;
 let gameStarted = false;
+let isPaused = false;
+let isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 let particles = [];
 let decorativeObjects = [];
 let cheaterDetected = false;
@@ -1165,7 +1193,7 @@ function spawnCoin() {
 }
 
 function update() {
-    if (gameOver || !gameStarted || cheaterDetected) return;
+    if (gameOver || !gameStarted || isPaused || cheaterDetected) return;
 
     const currentTime = Date.now();
     if (currentTime - lastMoveTime < moveInterval - 10) return; // Basic rate check
@@ -1379,8 +1407,8 @@ function updateShopList() {
     const bgList = document.getElementById('bg-list');
     if (!skinList || !bgList) return;
 
-    const ownedText = TRANSLATIONS[currentLang].owned;
-    const coinsText = TRANSLATIONS[currentLang].coins;
+    const ownedText = TRANSLATIONS[currentLang].owned || "OWNED";
+    const coinsText = TRANSLATIONS[currentLang].coins || "Coins";
 
     skinList.innerHTML = '';
     SKINS.forEach(skin => {
@@ -1631,6 +1659,67 @@ function animateShop() {
     }
 }
 
+document.getElementById('pause-btn').onclick = togglePause;
+
+function togglePause() {
+    if (!gameStarted || gameOver) return;
+    isPaused = !isPaused;
+    audioManager.playUiClick();
+    document.getElementById('pause-btn').innerText = isPaused ? '▶' : '⏸';
+    if (isPaused) {
+        audioManager.stopBackgroundMusic();
+    } else {
+        audioManager.startBackgroundMusic();
+    }
+}
+
+document.getElementById('mod-picker-btn').onclick = () => {
+    audioManager.playUiClick();
+    document.getElementById('mod-picker-overlay').style.display = 'flex';
+    renderModList();
+};
+
+document.getElementById('close-mod-picker-btn').onclick = () => {
+    audioManager.playUiClick();
+    document.getElementById('mod-picker-overlay').style.display = 'none';
+};
+
+function renderModList() {
+    const modList = document.getElementById('mod-list');
+    modList.innerHTML = '';
+    ModManager.mods.forEach(mod => {
+        const item = document.createElement('div');
+        item.className = 'mod-item';
+        item.innerHTML = `
+            <img src="${mod.favicon || 'favicon/favicon.png'}" class="mod-favicon">
+            <div class="mod-info">
+                <h3>${mod.title}</h3>
+                <p>${mod.description}</p>
+                ${mod.banner ? `<div class="mod-banner" style="background-image: url('${mod.banner}')"></div>` : ''}
+            </div>
+        `;
+        modList.appendChild(item);
+    });
+}
+
+// Touch controls setup
+if (isTouchDevice) {
+    document.getElementById('touch-controls').style.display = 'flex';
+    document.getElementById('up-btn').ontouchstart = (e) => { e.preventDefault(); handleDirection(0, 0, -1); };
+    document.getElementById('down-btn').ontouchstart = (e) => { e.preventDefault(); handleDirection(0, 0, 1); };
+    document.getElementById('left-btn').ontouchstart = (e) => { e.preventDefault(); handleDirection(-1, 0, 0); };
+    document.getElementById('right-btn').ontouchstart = (e) => { e.preventDefault(); handleDirection(1, 0, 0); };
+    
+    // Adjust camera for mobile
+    camera.position.set(0, 15, 25);
+    camera.lookAt(0, 0, 0);
+}
+
+function handleDirection(x, y, z) {
+    if (z !== 0 && direction.z === 0) nextDirection.set(x, y, z);
+    if (x !== 0 && direction.x === 0) nextDirection.set(x, y, z);
+}
+
 document.getElementById('shop-btn').onclick = () => {
     audioManager.playUiClick();
     document.getElementById('shop-overlay').style.display = 'flex';
@@ -1677,6 +1766,11 @@ document.querySelectorAll('button').forEach(btn => {
 
 function onKeyDown(event) {
     if (!gameStarted) return;
+    if (event.key === 'p' || event.key === 'P' || event.key === ' ') {
+        togglePause();
+        return;
+    }
+    if (isPaused) return;
     switch (event.key) {
         case 'ArrowUp': if (direction.z === 0) nextDirection.set(0, 0, -1); break;
         case 'ArrowDown': if (direction.z === 0) nextDirection.set(0, 0, 1); break;

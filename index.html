@@ -39,6 +39,8 @@
         <p data-t="controls">Use Arrow Keys to move</p>
         <p><span data-t="score">Score</span>: <span id="score">0</span> | <span data-t="high">High</span>: <span id="high-score">0</span> | <span data-t="coins">Coins</span>: <span id="coins">0</span></p>
         <div class="hud-controls">
+            <button id="mod-picker-btn" class="icon-btn" style="display: none;">🧩</button>
+            <button id="pause-btn" class="icon-btn">⏸</button>
             <button id="mute-btn" class="icon-btn">🔊</button>
             <select id="lang-select" class="lang-switcher">
                 <option value="en">English</option>
@@ -71,6 +73,23 @@
                 <div id="bg-list" style="display: none;"></div>
             </div>
             <button id="close-shop-btn" data-t="back_to_menu">Back to Menu</button>
+        </div>
+    </div>
+    <div id="mod-picker-overlay" style="display: none;">
+        <div id="mod-picker">
+            <h2 data-t="mod_picker">Mod Picker</h2>
+            <div id="mod-list"></div>
+            <button id="close-mod-picker-btn" data-t="back_to_menu">Back to Menu</button>
+        </div>
+    </div>
+    <div id="touch-controls" style="display: none;">
+        <div class="touch-row">
+            <button id="up-btn" class="touch-btn">▲</button>
+        </div>
+        <div class="touch-row">
+            <button id="left-btn" class="touch-btn">◀</button>
+            <button id="down-btn" class="touch-btn">▼</button>
+            <button id="right-btn" class="touch-btn">▶</button>
         </div>
     </div>
     <div id="game-container"></div>

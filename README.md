@@ -169,6 +169,10 @@ Define procedural synth music:
 ```json
 {
   "name": "Retro Neon",
+  "title": "Retro Neon Space Adventure",
+  "description": "A high-octane synthwave mod with neon grids and pulse music.",
+  "banner": "banner.png",
+  "favicon": "mod_icon.png",
   "skins": [
     {
       "id": "retro_pink",
@@ -201,7 +205,17 @@ Define procedural synth music:
 
 ---
 
-### 6. Updating the Manifest
+### 6. Metadata Requirements
+
+To make your mod look professional in the **Mod Picker**, include these fields in `mod.json`:
+- `title`: The display title for the mod picker (e.g., "The Void Expansion")
+- `description`: A short blurb about what your mod adds
+- `banner`: A PNG image (e.g., 600x120) for the mod's background in the picker
+- `favicon`: A small square PNG (e.g., 48x48) for the mod's icon
+
+---
+
+### 7. Updating the Manifest
 
 Edit `mods/manifest.json` to register your mod:
 
