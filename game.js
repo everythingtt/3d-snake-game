@@ -841,6 +841,7 @@ function updateBackground() {
                     sunDirection: { value: new THREE.Vector3(1, 0.2, 1).normalize() }
                 },
                 vertexShader: `
+                    uniform vec3 sunDirection;
                     varying vec2 vUv;
                     varying vec3 vNormal;
                     varying vec3 vSunDirection;
@@ -1384,7 +1385,7 @@ function updateShopList() {
     skinList.innerHTML = '';
     SKINS.forEach(skin => {
         const item = document.createElement('div');
-        const name = TRANSLATIONS[currentLang][skin.nameKey] || skin.id;
+        const name = (skin.nameKey && TRANSLATIONS[currentLang][skin.nameKey]) || skin.name || skin.id;
         item.className = `skin-item ${ownedSkins.includes(skin.id) ? '' : 'locked'} ${currentSkinId === skin.id ? 'selected' : ''}`;
         item.innerHTML = `<h3>${name}</h3><div class="price">${ownedSkins.includes(skin.id) ? ownedText : skin.price + ' ' + coinsText}</div>`;
         item.onclick = () => selectSkin(skin);
@@ -1395,7 +1396,7 @@ function updateShopList() {
     bgList.innerHTML = '';
     BACKGROUNDS.forEach(bg => {
         const item = document.createElement('div');
-        const name = TRANSLATIONS[currentLang][bg.nameKey] || bg.id;
+        const name = (bg.nameKey && TRANSLATIONS[currentLang][bg.nameKey]) || bg.name || bg.id;
         item.className = `bg-item ${ownedBgs.includes(bg.id) ? '' : 'locked'} ${currentBgId === bg.id ? 'selected' : ''}`;
         item.innerHTML = `<h3>${name}</h3><div class="price">${ownedBgs.includes(bg.id) ? ownedText : bg.price + ' ' + coinsText}</div>`;
         item.onclick = () => selectBg(bg);
@@ -1478,6 +1479,7 @@ function updateShopPreviewBg() {
                     sunDirection: { value: new THREE.Vector3(1, 0.2, 1).normalize() }
                 },
                 vertexShader: `
+                    uniform vec3 sunDirection;
                     varying vec2 vUv;
                     varying vec3 vNormal;
                     varying vec3 vSunDirection;
