@@ -10,17 +10,17 @@ const MIN_MOVE_INTERVAL = 110;
 
 // Skins configuration
 const SKINS = [
-    { id: 'classic', name: 'Classic Green', head: 0x00ff00, body: 0x008800, price: 0 },
-    { id: 'neon', name: 'Neon Blue', head: 0x00ffff, body: 0x0000ff, price: 50 },
-    { id: 'lava', name: 'Lava Flow', head: 0xff4400, body: 0x880000, price: 100 },
-    { id: 'gold', name: 'Golden Midas', head: 0xffff00, body: 0xaa8800, price: 250 },
-    { id: 'void', name: 'Void Walker', head: 0xff00ff, body: 0x440044, price: 500 },
-    { id: 'matrix', name: 'Matrix Code', head: 0x00ff00, body: 0x003300, emissive: 0x00ff00, price: 1000 }
+    { id: 'classic', name: 'Original Pulse', head: 0x00ff00, body: 0x008800, price: 0 },
+    { id: 'neon', name: 'Electric Ghost', head: 0x00ffff, body: 0x0000ff, price: 50 },
+    { id: 'lava', name: 'Molten Core', head: 0xff4400, body: 0x880000, price: 100 },
+    { id: 'gold', name: 'Solar Flare', head: 0xffff00, body: 0xaa8800, price: 250 },
+    { id: 'void', name: 'Stardust Stalker', head: 0xff00ff, body: 0x440044, price: 500 },
+    { id: 'matrix', name: 'Digital Fragment', head: 0x00ff00, body: 0x003300, emissive: 0x00ff00, price: 1000 }
 ];
 
 const BACKGROUNDS = [
     { 
-        id: 'space', name: 'Deep Space', color: 0x000000, stars: true, grid: 0x444444, fog: 0x000000, envType: 'planets', price: 0,
+        id: 'space', name: 'The Silent Void', color: 0x000000, stars: true, grid: 0x444444, fog: 0x000000, envType: 'planets', price: 0,
         music: { 
             speed: 0.25,
             reverb: 0.6,
@@ -31,7 +31,7 @@ const BACKGROUNDS = [
         }
     },
     { 
-        id: 'neon', name: 'Neon City', color: 0x000022, stars: false, grid: 0x00ffff, fog: 0x000044, envType: 'cubes', price: 100,
+        id: 'neon', name: 'Synthetic Skyline', color: 0x000022, stars: false, grid: 0x00ffff, fog: 0x000044, envType: 'cubes', price: 100,
         music: { 
             speed: 0.15,
             reverb: 0.3,
@@ -42,7 +42,7 @@ const BACKGROUNDS = [
         }
     },
     { 
-        id: 'sunset', name: 'Sunset Grid', color: 0x220022, stars: false, grid: 0xff00ff, fog: 0x440044, envType: 'sun', price: 200,
+        id: 'sunset', name: 'Last Horizon', color: 0x220022, stars: false, grid: 0xff00ff, fog: 0x440044, envType: 'sun', price: 200,
         music: { 
             speed: 0.5,
             reverb: 0.5,
@@ -53,7 +53,7 @@ const BACKGROUNDS = [
         }
     },
     { 
-        id: 'matrix', name: 'Matrix Void', color: 0x000500, stars: true, grid: 0x00ff00, fog: 0x001100, envType: 'code', price: 500,
+        id: 'matrix', name: 'Zero-One Realm', color: 0x000500, stars: true, grid: 0x00ff00, fog: 0x001100, envType: 'code', price: 500,
         music: { 
             speed: 0.1,
             reverb: 0.4,
@@ -64,7 +64,7 @@ const BACKGROUNDS = [
         }
     },
     { 
-        id: 'hell', name: 'Hellscape', color: 0x220000, stars: false, grid: 0xff4400, fog: 0x440000, envType: 'lava', price: 300,
+        id: 'hell', name: 'Abyssal Flare', color: 0x220000, stars: false, grid: 0xff4400, fog: 0x440000, envType: 'lava', price: 300,
         music: { 
             speed: 1.0,
             reverb: 0.8,
@@ -87,7 +87,7 @@ const BACKGROUNDS = [
         }
     },
     { 
-        id: 'mystery', name: 'Mystery Void', color: 0x111111, stars: true, grid: 0xffffff, fog: 0x222222, envType: 'custom', price: 1000,
+        id: 'mystery', name: 'Unknown Signal', color: 0x111111, stars: true, grid: 0xffffff, fog: 0x222222, envType: 'custom', price: 1000,
         music: { 
             speed: 0.2,
             reverb: 0.7,
