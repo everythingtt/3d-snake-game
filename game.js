@@ -173,6 +173,7 @@ const SKINS = [
 const BACKGROUNDS = [
     { 
         id: 'space', nameKey: 'deep_space', color: 0x000000, stars: true, grid: 0x444444, fog: 0x000000, envType: 'planets', price: 0,
+        groundTexture: 'moon',
         music: { 
             speed: 0.25,
             reverb: 0.6,
@@ -184,6 +185,7 @@ const BACKGROUNDS = [
     },
     { 
         id: 'neon', nameKey: 'neon_city', color: 0x000022, stars: false, grid: 0x00ffff, fog: 0x000044, envType: 'cubes', price: 100,
+        groundTexture: 'neon',
         music: { 
             speed: 0.15,
             reverb: 0.3,
@@ -195,6 +197,7 @@ const BACKGROUNDS = [
     },
     { 
         id: 'sunset', nameKey: 'sunset_grid', color: 0x220022, stars: false, grid: 0xff00ff, fog: 0x440044, envType: 'sun', price: 200,
+        groundTexture: 'retro',
         music: { 
             speed: 0.5,
             reverb: 0.5,
@@ -206,6 +209,7 @@ const BACKGROUNDS = [
     },
     { 
         id: 'matrix', nameKey: 'matrix_void', color: 0x000500, stars: true, grid: 0x00ff00, fog: 0x001100, envType: 'code', price: 500,
+        groundTexture: 'circuit',
         music: { 
             speed: 0.1,
             reverb: 0.4,
@@ -217,6 +221,7 @@ const BACKGROUNDS = [
     },
     { 
         id: 'hell', nameKey: 'hellscape', color: 0x220000, stars: false, grid: 0xff4400, fog: 0x440000, envType: 'lava', price: 300,
+        groundTexture: 'lava',
         music: { 
             speed: 1.0,
             reverb: 0.8,
@@ -240,6 +245,7 @@ const BACKGROUNDS = [
     },
     { 
         id: 'mystery', nameKey: 'mystery_void', color: 0x111111, stars: true, grid: 0xffffff, fog: 0x222222, envType: 'custom', price: 1000,
+        groundTexture: 'sand',
         music: { 
             speed: 0.2,
             reverb: 0.7,
@@ -785,6 +791,39 @@ const planetTextures = {
     venus: textureLoader.load('textures/venus/venus.png')
 };
 
+const groundTextures = {
+    sand: textureLoader.load('textures/ground/sand.png', (texture) => {
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(5, 5);
+    }),
+    lava: textureLoader.load('textures/ground/lava.png', (texture) => {
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(3, 3);
+    }),
+    moon: textureLoader.load('textures/ground/moon-surface.png', (texture) => {
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(4, 4);
+    }),
+    neon: textureLoader.load('textures/ground/neon-floor.png', (texture) => {
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(2, 2);
+    }),
+    retro: textureLoader.load('textures/ground/retro.png', (texture) => {
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(1, 1);
+    }),
+    circuit: textureLoader.load('textures/ground/circuit-board.jpg', (texture) => {
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(2, 2);
+    })
+};
+
 // Three.js setup
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -804,8 +843,30 @@ const pointLight = new THREE.PointLight(0xffffff, 1, 100);
 pointLight.position.set(10, 10, 10);
 scene.add(pointLight);
 
+// Ground Plane
+const groundGeometry = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE);
+const groundMaterial = new THREE.MeshPhongMaterial({ 
+    color: 0x222222, 
+    transparent: true, 
+    opacity: 0.8,
+    side: THREE.DoubleSide
+});
+const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
+groundMesh.rotation.x = -Math.PI / 2;
+groundMesh.position.y = 0;
+scene.add(groundMesh);
+
+// Ground Border
+const borderGeometry = new THREE.EdgesGeometry(groundGeometry);
+const borderMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2 });
+const borderMesh = new THREE.LineSegments(borderGeometry, borderMaterial);
+borderMesh.rotation.x = -Math.PI / 2;
+borderMesh.position.y = 0.01; // Slightly above ground
+scene.add(borderMesh);
+
 // Grid helper
 const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x888888, 0x444444);
+gridHelper.position.y = 0.02; // Slightly above border
 scene.add(gridHelper);
 
 // Starfield background
@@ -839,6 +900,30 @@ function updateBackground() {
     gridHelper.material.color.set(bg.grid);
     gridHelper.material.opacity = bg.gridOpacity !== undefined ? bg.gridOpacity : 1.0;
     gridHelper.material.transparent = gridHelper.material.opacity < 1.0;
+
+    // Update Ground and Border
+    borderMaterial.color.set(bg.grid);
+    groundMaterial.color.set(bg.color);
+    groundMaterial.opacity = 0.8;
+    
+    // Apply special textures or effects based on theme
+    if (bg.groundTexture && groundTextures[bg.groundTexture]) {
+        groundMaterial.map = groundTextures[bg.groundTexture];
+        groundMaterial.color.set(0xffffff);
+        groundMaterial.opacity = (bg.id === 'space') ? 0.6 : 1.0;
+    } else {
+        // Default mod/custom handling
+        const modAssets = ModManager.assets.get(bg.id);
+        if (modAssets?.envTexture) {
+            groundMaterial.map = modAssets.envTexture;
+            groundMaterial.color.set(0xffffff);
+        } else {
+            groundMaterial.map = null;
+            groundMaterial.color.set(bg.color);
+        }
+        groundMaterial.opacity = 0.8;
+    }
+    groundMaterial.needsUpdate = true;
     
     if (bg.stars) {
         if (!starfield) createStarfield();
