@@ -1462,8 +1462,6 @@ function update() {
     // Check coin collision
     const ateCoin = coin && newHeadPos.distanceTo(coin.pos) < 0.1;
 
-    const t = TRANSLATIONS[LanguageManager.current];
-
     if (ateFood) {
         // Growth: we add the head and DON'T remove the tail
         score += 10;
