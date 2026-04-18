@@ -21,31 +21,81 @@ const SKINS = [
 const BACKGROUNDS = [
     { 
         id: 'space', name: 'Deep Space', color: 0x000000, stars: true, grid: 0x444444, fog: 0x000000, envType: 'planets', price: 0,
-        music: { type: 'triangle', sequence: [261.63, 329.63, 392.00, 523.25], speed: 0.25 }
+        music: { 
+            speed: 0.25,
+            reverb: 0.6,
+            tracks: [
+                { type: 'triangle', sequence: [261.63, null, 329.63, null, 392.00, null, 523.25, null], gain: 0.1, filter: 1000 },
+                { type: 'sine', sequence: [130.81, 130.81, 164.81, 164.81, 196.00, 196.00, 130.81, 130.81], gain: 0.15, filter: 500 }
+            ]
+        }
     },
     { 
         id: 'neon', name: 'Neon City', color: 0x000022, stars: false, grid: 0x00ffff, fog: 0x000044, envType: 'cubes', price: 100,
-        music: { type: 'square', sequence: [440, 349.23, 392, 261.63], speed: 0.15 }
+        music: { 
+            speed: 0.15,
+            reverb: 0.3,
+            tracks: [
+                { type: 'square', sequence: [440, 349.23, 392, 261.63], gain: 0.05, filter: 2000 },
+                { type: 'sawtooth', sequence: [110, 110, 110, 82.41], gain: 0.08, filter: 800 }
+            ]
+        }
     },
     { 
         id: 'sunset', name: 'Sunset Grid', color: 0x220022, stars: false, grid: 0xff00ff, fog: 0x440044, envType: 'sun', price: 200,
-        music: { type: 'sawtooth', sequence: [196.00, 220.00, 261.63, 293.66], speed: 0.5 }
+        music: { 
+            speed: 0.5,
+            reverb: 0.5,
+            tracks: [
+                { type: 'sawtooth', sequence: [196.00, 220.00, 261.63, 293.66], gain: 0.05, filter: 1500 },
+                { type: 'sine', sequence: [98, 98, 110, 110], gain: 0.1, filter: 600 }
+            ]
+        }
     },
     { 
         id: 'matrix', name: 'Matrix Void', color: 0x000500, stars: true, grid: 0x00ff00, fog: 0x001100, envType: 'code', price: 500,
-        music: { type: 'sine', sequence: [880, 987.77, 1046.50, 1318.51], speed: 0.1 }
+        music: { 
+            speed: 0.1,
+            reverb: 0.4,
+            tracks: [
+                { type: 'sine', sequence: [880, 987.77, 1046.50, 1318.51], gain: 0.08, filter: 3000 },
+                { type: 'square', sequence: [220, 246.94, 261.63, 329.63], gain: 0.03, filter: 1000 }
+            ]
+        }
     },
     { 
         id: 'hell', name: 'Hellscape', color: 0x220000, stars: false, grid: 0xff4400, fog: 0x440000, envType: 'lava', price: 300,
-        music: { type: 'sawtooth', sequence: [65.41, 73.42, 82.41, 61.74], speed: 1.0 }
+        music: { 
+            speed: 1.0,
+            reverb: 0.8,
+            tracks: [
+                { type: 'sawtooth', sequence: [65.41, 73.42, 82.41, 61.74], gain: 0.15, filter: 400 },
+                { type: 'sawtooth', sequence: [130.81, 146.83, 164.81, 123.47], gain: 0.1, filter: 800 }
+            ]
+        }
     },
     { 
         id: 'blackhole', name: 'Event Horizon', color: 0x000000, stars: true, grid: 0x333333, fog: 0x110022, envType: 'blackhole', price: 800,
-        music: { type: 'sine', sequence: [110, 116.54, 123.47, 130.81], speed: 0.2, random: true }
+        music: { 
+            speed: 0.2,
+            reverb: 0.9,
+            random: true,
+            tracks: [
+                { type: 'sine', sequence: [110, 116.54, 123.47, 130.81], gain: 0.1, filter: 500 },
+                { type: 'sine', sequence: [220, 233.08, 246.94, 261.63], gain: 0.05, filter: 1000 }
+            ]
+        }
     },
     { 
         id: 'mystery', name: 'Mystery Void', color: 0x111111, stars: true, grid: 0xffffff, fog: 0x222222, envType: 'custom', price: 1000,
-        music: { type: 'triangle', sequence: [440, 523.25, 659.25, 783.99], speed: 0.2 }
+        music: { 
+            speed: 0.2,
+            reverb: 0.7,
+            tracks: [
+                { type: 'triangle', sequence: [440, 523.25, 659.25, 783.99], gain: 0.1, filter: 1200 },
+                { type: 'sine', sequence: [220, 261.63, 329.63, 392.00], gain: 0.1, filter: 600 }
+            ]
+        }
     }
 ];
 
@@ -315,24 +365,45 @@ class AudioManager {
     constructor() {
         this.ctx = null;
         this.masterGain = null;
+        this.reverbNode = null;
         this.musicLoopId = null;
         this.currentMusicConfig = null;
         this.externalMusicSource = null;
-        this.externalAudioBuffers = new Map(); // Store decoded audio files
+        this.externalAudioBuffers = new Map();
+        this.isMuted = false;
     }
 
     init() {
         if (this.ctx) return;
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         this.masterGain = this.ctx.createGain();
-        this.masterGain.connect(this.ctx.destination);
         this.masterGain.gain.value = 0.2;
+        
+        // Create Reverb
+        this.reverbNode = this.ctx.createConvolver();
+        this.createReverb(1.5, 2.0); // Default reverb
+        
+        this.masterGain.connect(this.ctx.destination);
+    }
+
+    // Procedural Reverb Impulse Response
+    createReverb(duration, decay) {
+        if (!this.ctx) return;
+        const sampleRate = this.ctx.sampleRate;
+        const length = sampleRate * duration;
+        const impulse = this.ctx.createBuffer(2, length, sampleRate);
+        for (let i = 0; i < 2; i++) {
+            const channel = impulse.getChannelData(i);
+            for (let j = 0; j < length; j++) {
+                channel[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / length, decay);
+            }
+        }
+        this.reverbNode.buffer = impulse;
     }
 
     async loadExternalAudio(url) {
         if (!this.ctx) this.init();
         if (this.externalAudioBuffers.has(url)) return this.externalAudioBuffers.get(url);
-        
         try {
             const response = await fetch(url);
             const arrayBuffer = await response.arrayBuffer();
@@ -340,14 +411,13 @@ class AudioManager {
             this.externalAudioBuffers.set(url, audioBuffer);
             return audioBuffer;
         } catch (e) {
-            console.error('Failed to load external audio:', url, e);
+            console.error('Audio load failed:', url, e);
             return null;
         }
     }
 
     playExternalSound(url) {
         if (!this.ctx || !this.externalAudioBuffers.has(url)) return false;
-        
         const source = this.ctx.createBufferSource();
         source.buffer = this.externalAudioBuffers.get(url);
         source.connect(this.masterGain);
@@ -358,78 +428,109 @@ class AudioManager {
     updateMusicTheme(bgId) {
         const bg = BACKGROUNDS.find(b => b.id === bgId) || BACKGROUNDS[0];
         if (this.currentMusicConfig === bg.music) return;
-        
         this.currentMusicConfig = bg.music;
+        
+        if (this.ctx) {
+            this.createReverb(2.0, bg.music.reverb * 5 || 2.0);
+        }
         this.startBackgroundMusic();
+    }
+
+    // Advanced Procedural Synth Voice
+    playSynth(freq, type, gainValue, filterFreq, duration, time, options = {}) {
+        if (!this.ctx || freq === null) return;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, time);
+        
+        if (options.freqSweep) {
+            osc.frequency.exponentialRampToValueAtTime(options.freqSweep, time + duration);
+        }
+
+        filter.type = options.filterType || 'lowpass';
+        filter.frequency.setValueAtTime(filterFreq, time);
+        if (options.filterSweep) {
+            filter.frequency.exponentialRampToValueAtTime(options.filterSweep, time + duration);
+        }
+
+        // ADSR Envelope
+        const attack = options.attack || 0.01;
+        const decay = options.decay || 0.1;
+        const sustain = options.sustain !== undefined ? options.sustain : 0.5;
+        const release = options.release || 0.2;
+
+        gain.gain.setValueAtTime(0, time);
+        gain.gain.linearRampToValueAtTime(gainValue, time + attack);
+        gain.gain.exponentialRampToValueAtTime(gainValue * sustain, time + attack + decay);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        
+        // Route to reverb if requested
+        if (options.useReverb) {
+            gain.connect(this.reverbNode);
+            this.reverbNode.connect(this.masterGain);
+        } else {
+            gain.connect(this.masterGain);
+        }
+
+        osc.start(time);
+        osc.stop(time + duration + release);
     }
 
     playEatSound() {
         const bg = BACKGROUNDS.find(b => b.id === currentBgId);
         if (bg?.isMod && bg.sfx?.eat && this.playExternalSound(bg.sfx.eat)) return;
-
-        if (!this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(440, this.ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
-        osc.connect(gain);
-        gain.connect(this.masterGain);
-        osc.start();
-        osc.stop(this.ctx.currentTime + 0.1);
+        this.init();
+        const now = this.ctx.currentTime;
+        // Harmonic blip
+        this.playSynth(440, 'square', 0.2, 2000, 0.1, now, { freqSweep: 880, filterSweep: 500 });
+        this.playSynth(660, 'sine', 0.1, 3000, 0.1, now, { freqSweep: 1320 });
     }
 
     playCoinSound() {
         const bg = BACKGROUNDS.find(b => b.id === currentBgId);
         if (bg?.isMod && bg.sfx?.coin && this.playExternalSound(bg.sfx.coin)) return;
-
-        if (!this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, this.ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1760, this.ctx.currentTime + 0.05);
-        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
-        osc.connect(gain);
-        gain.connect(this.masterGain);
-        osc.start();
-        osc.stop(this.ctx.currentTime + 0.1);
+        this.init();
+        const now = this.ctx.currentTime;
+        // "Ding" sound with reverb
+        this.playSynth(987.77, 'sine', 0.2, 5000, 0.4, now, { 
+            freqSweep: 1975.53, 
+            attack: 0.005, 
+            release: 0.3, 
+            useReverb: true 
+        });
     }
 
     playErrorSound() {
-        if (!this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(150, this.ctx.currentTime);
-        osc.frequency.linearRampToValueAtTime(10, this.ctx.currentTime + 0.3);
-        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
-        osc.connect(gain);
-        gain.connect(this.masterGain);
-        osc.start();
-        osc.stop(this.ctx.currentTime + 0.3);
+        this.init();
+        const now = this.ctx.currentTime;
+        this.playSynth(150, 'sawtooth', 0.2, 800, 0.3, now, { freqSweep: 40, filterSweep: 100 });
     }
 
     playGameOverSound() {
         const bg = BACKGROUNDS.find(b => b.id === currentBgId);
         if (bg?.isMod && bg.sfx?.gameover && this.playExternalSound(bg.sfx.gameover)) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        // Dramatic descent
+        this.playSynth(220, 'sawtooth', 0.3, 1000, 1.0, now, { freqSweep: 55, filterSweep: 50, useReverb: true });
+        this.playSynth(110, 'square', 0.2, 500, 1.0, now, { freqSweep: 27.5 });
+    }
 
-        if (!this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(220, this.ctx.currentTime);
-        osc.frequency.linearRampToValueAtTime(50, this.ctx.currentTime + 0.5);
-        gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
-        osc.connect(gain);
-        gain.connect(this.masterGain);
-        osc.start();
-        osc.stop(this.ctx.currentTime + 0.5);
+    playUiHover() {
+        this.init();
+        this.playSynth(880, 'sine', 0.05, 2000, 0.05, this.ctx.currentTime, { attack: 0.001 });
+    }
+
+    playUiClick() {
+        this.init();
+        this.playSynth(1760, 'sine', 0.1, 4000, 0.08, this.ctx.currentTime, { freqSweep: 2200 });
     }
 
     stopBackgroundMusic() {
@@ -445,8 +546,6 @@ class AudioManager {
         this.stopBackgroundMusic();
         
         const config = this.currentMusicConfig || BACKGROUNDS[0].music;
-        
-        // Handle external modded music file
         if (config.externalUrl) {
             const buffer = await this.loadExternalAudio(config.externalUrl);
             if (buffer) {
@@ -459,31 +558,28 @@ class AudioManager {
             }
         }
 
-        // Fallback to procedural music
-        const playNote = (freq, time, duration) => {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = config.type;
-            osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.1, time);
-            gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
-            osc.connect(gain);
-            gain.connect(this.masterGain);
-            osc.start(time);
-            osc.stop(time + duration);
-        };
-
-        const sequence = config.sequence;
-        let time = this.ctx.currentTime;
+        let time = this.ctx.currentTime + 0.1;
         const loop = () => {
-            if (this.currentMusicConfig !== config) return; 
+            if (this.currentMusicConfig !== config) return;
             
-            sequence.forEach((freq, i) => {
-                const f = config.random ? freq * (0.9 + Math.random() * 0.2) : freq;
-                playNote(f, time + i * config.speed, config.speed * 0.8);
+            const longestTrack = Math.max(...config.tracks.map(t => t.sequence.length));
+            
+            config.tracks.forEach(track => {
+                track.sequence.forEach((freq, i) => {
+                    if (freq === null) return;
+                    const f = config.random ? freq * (0.95 + Math.random() * 0.1) : freq;
+                    const noteTime = time + i * config.speed;
+                    this.playSynth(f, track.type, track.gain, track.filter, config.speed * 0.9, noteTime, {
+                        useReverb: true,
+                        decay: config.speed * 0.5,
+                        sustain: 0.3
+                    });
+                });
             });
-            time += sequence.length * config.speed;
-            this.musicLoopId = setTimeout(loop, sequence.length * config.speed * 1000);
+
+            time += longestTrack * config.speed;
+            const delay = (time - this.ctx.currentTime) * 1000;
+            this.musicLoopId = setTimeout(loop, Math.max(0, delay - 100));
         };
         loop();
     }
@@ -1088,6 +1184,7 @@ function initShopPreview() {
 }
 
 function selectSkin(skin) {
+    audioManager.playUiClick();
     if (!ownedSkins.includes(skin.id)) {
         if (coins >= skin.price) {
             coins -= skin.price;
@@ -1096,6 +1193,7 @@ function selectSkin(skin) {
             updateUI();
             updateShopList();
         } else {
+            audioManager.playErrorSound();
             alert('Not enough coins!');
             return;
         }
@@ -1107,6 +1205,7 @@ function selectSkin(skin) {
 }
 
 function selectBg(bg) {
+    audioManager.playUiClick();
     if (!ownedBgs.includes(bg.id)) {
         if (coins >= bg.price) {
             coins -= bg.price;
@@ -1115,6 +1214,7 @@ function selectBg(bg) {
             updateUI();
             updateShopList();
         } else {
+            audioManager.playErrorSound();
             alert('Not enough coins!');
             return;
         }
@@ -1139,6 +1239,7 @@ function updateShopList() {
         item.className = `skin-item ${ownedSkins.includes(skin.id) ? '' : 'locked'} ${currentSkinId === skin.id ? 'selected' : ''}`;
         item.innerHTML = `<h3>${skin.name}</h3><div class="price">${ownedSkins.includes(skin.id) ? 'OWNED' : skin.price + ' Coins'}</div>`;
         item.onclick = () => selectSkin(skin);
+        item.onmouseenter = () => audioManager.playUiHover();
         skinList.appendChild(item);
     });
 
@@ -1148,12 +1249,14 @@ function updateShopList() {
         item.className = `bg-item ${ownedBgs.includes(bg.id) ? '' : 'locked'} ${currentBgId === bg.id ? 'selected' : ''}`;
         item.innerHTML = `<h3>${bg.name}</h3><div class="price">${ownedBgs.includes(bg.id) ? 'OWNED' : bg.price + ' Coins'}</div>`;
         item.onclick = () => selectBg(bg);
+        item.onmouseenter = () => audioManager.playUiHover();
         bgList.appendChild(item);
     });
 }
 
 // Tab Switching
 document.getElementById('tab-skins').onclick = () => {
+    audioManager.playUiClick();
     document.getElementById('tab-skins').classList.add('active');
     document.getElementById('tab-backgrounds').classList.remove('active');
     document.getElementById('skin-list').style.display = 'grid';
@@ -1161,6 +1264,7 @@ document.getElementById('tab-skins').onclick = () => {
 };
 
 document.getElementById('tab-backgrounds').onclick = () => {
+    audioManager.playUiClick();
     document.getElementById('tab-backgrounds').classList.add('active');
     document.getElementById('tab-skins').classList.remove('active');
     document.getElementById('skin-list').style.display = 'none';
@@ -1376,6 +1480,7 @@ function animateShop() {
 }
 
 document.getElementById('shop-btn').onclick = () => {
+    audioManager.playUiClick();
     document.getElementById('shop-overlay').style.display = 'flex';
     audioManager.init();
     if (!shopRenderer) initShopPreview();
@@ -1386,10 +1491,12 @@ document.getElementById('shop-btn').onclick = () => {
 };
 
 document.getElementById('close-shop-btn').onclick = () => {
+    audioManager.playUiClick();
     document.getElementById('shop-overlay').style.display = 'none';
 };
 
 document.getElementById('start-btn').onclick = () => {
+    audioManager.playUiClick();
     document.getElementById('overlay').style.display = 'none';
     audioManager.init();
     audioManager.updateMusicTheme(currentBgId); // Start themed music
@@ -1397,6 +1504,19 @@ document.getElementById('start-btn').onclick = () => {
     updateBackground(); // Ensure background is correct for game start
     initGame();
 };
+
+document.getElementById('mute-btn').onclick = () => {
+    audioManager.init();
+    audioManager.isMuted = !audioManager.isMuted;
+    audioManager.masterGain.gain.setTargetAtTime(audioManager.isMuted ? 0 : 0.2, audioManager.ctx.currentTime, 0.1);
+    document.getElementById('mute-btn').innerText = audioManager.isMuted ? '🔇' : '🔊';
+    audioManager.playUiClick();
+};
+
+// Add hover sounds to all buttons
+document.querySelectorAll('button').forEach(btn => {
+    btn.onmouseenter = () => audioManager.playUiHover();
+});
 
 function onKeyDown(event) {
     if (!gameStarted) return;
