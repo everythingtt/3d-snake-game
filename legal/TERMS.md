@@ -10,6 +10,8 @@ We grant you a personal, non-exclusive, non-transferable, revocable license to u
 
 ## 3. User-Generated Content & Modding
 - The Game includes a modding system. You are solely responsible for any mods you create, download, or install.
+- All mods must comply with our [Modding Guidelines](MODDING_GUIDELINES.md).
+- **PROHIBITED CONTENT:** You may not create, distribute, or load mods containing illegal, NSFW (Not Safe For Work), or CASM (Child Abuse Sexual Material) content.
 - **WARNING:** Mods are created by third parties and may contain code that could be harmful if run in an insecure environment. We do not vet or guarantee the safety of any third-party mods.
 - You agree not to use the modding system to bypass security features or distribute malicious software.
 

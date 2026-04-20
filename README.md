@@ -4,6 +4,15 @@ A thrilling 3D snake experience set in a deep space starfield. Collect energy sp
 
 ## How to Make Mods for 3D Snake Game
 
+The 3D Snake Game has a built-in modding system. Please review our [Modding Guidelines](legal/MODDING_GUIDELINES.md) before creating or sharing any mods.
+
+### Prohibited Content
+All mods must be free of:
+- Illegal or infringing material.
+- NSFW/Adult content.
+- CASM (Child Abuse Sexual Material).
+- Malicious code.
+
 The 3D Snake Game has a built-in modding system that supports:
 - **Custom Skins** - Add new snake appearances with colors and textures
 - **Custom Backgrounds** - Create themed environments with models, textures, and audio
