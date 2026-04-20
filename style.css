@@ -209,6 +209,12 @@ body {
     color: #ccc;
 }
 
+.small-text {
+    font-size: 0.8rem !important;
+    color: #888 !important;
+    margin-top: 1rem;
+}
+
 #consent-modal a {
     color: #00ffff;
     text-decoration: none;
