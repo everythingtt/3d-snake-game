@@ -1919,8 +1919,45 @@ window.onerror = function(message, source, lineno, colno, error) {
     return false;
 };
 
-// Initialize Mod Manager
-ModManager.loadMods();
+// Consent Management
+const Consent = {
+    check() {
+        const consented = Security.load('snake3d_consented', false);
+        if (!consented) {
+            document.getElementById('consent-overlay').style.display = 'flex';
+            return false;
+        }
+        return true;
+    },
+    accept() {
+        const geoEnabled = document.getElementById('geo-consent').checked;
+        Security.save('snake3d_consented', true);
+        Security.save('snake3d_geo_consent', geoEnabled);
+        document.getElementById('consent-overlay').style.display = 'none';
+        
+        if (geoEnabled) {
+            detectLanguage();
+        } else {
+            setLanguage('en');
+        }
+        
+        // Load mods after consent
+        ModManager.loadMods();
+    }
+};
 
-// Detect initial language based on IP
-detectLanguage();
+document.getElementById('accept-consent-btn').onclick = () => {
+    audioManager.playUiClick();
+    Consent.accept();
+};
+
+// Initialize
+if (Consent.check()) {
+    const geoEnabled = Security.load('snake3d_geo_consent', false);
+    if (geoEnabled) {
+        detectLanguage();
+    } else {
+        setLanguage('en');
+    }
+    ModManager.loadMods();
+}

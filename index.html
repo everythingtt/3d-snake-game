@@ -60,6 +60,26 @@
                 <button id="start-btn" data-t="start_game">Start Game</button>
                 <button id="shop-btn" data-t="open_shop">Open Shop</button>
             </div>
+            <div class="legal-footer">
+                <a href="legal/TERMS.md" target="_blank">Terms</a> | 
+                <a href="legal/PRIVACY.md" target="_blank">Privacy</a> | 
+                <a href="legal/COOKIES.md" target="_blank">Cookies</a>
+            </div>
+        </div>
+    </div>
+    <div id="consent-overlay" style="display: none;">
+        <div id="consent-modal">
+            <h2>Welcome to Space Journey</h2>
+            <p>To provide the best experience, we use browser local storage to save your progress. We also offer automatic language detection based on your IP address.</p>
+            <p>By clicking "Accept", you agree to our <a href="legal/TERMS.md" target="_blank">Terms of Service</a>, <a href="legal/PRIVACY.md" target="_blank">Privacy Policy</a>, and use of local storage.</p>
+            <div class="consent-options">
+                <label>
+                    <input type="checkbox" id="geo-consent" checked> Enable automatic language detection (IP-based)
+                </label>
+            </div>
+            <div class="menu-buttons">
+                <button id="accept-consent-btn">Accept & Play</button>
+            </div>
         </div>
     </div>
     <div id="shop-overlay" style="display: none;">
@@ -79,6 +99,9 @@
     <div id="mod-picker-overlay" style="display: none;">
         <div id="mod-picker">
             <h2 data-t="mod_picker">Mod Picker</h2>
+            <div class="security-warning">
+                ⚠️ <strong>SECURITY WARNING:</strong> Third-party mods can execute code in your browser. Only load mods from trusted sources.
+            </div>
             <div id="mod-list"></div>
             <button id="close-mod-picker-btn" data-t="back_to_menu">Back to Menu</button>
         </div>
