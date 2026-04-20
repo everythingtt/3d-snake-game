@@ -301,9 +301,8 @@ const ModManager = {
             }
             
             const manifest = await response.json();
-            for (const modFolder of manifest.mods) {
-                await this.loadMod(modFolder);
-            }
+            // Load mods in parallel for faster startup
+            await Promise.all(manifest.mods.map(modFolder => this.loadMod(modFolder)));
             updateShopList();
         } catch (e) {
             console.log('No mods found or error loading manifest.');
@@ -762,9 +761,35 @@ class AudioManager {
 
 const audioManager = new AudioManager();
 
-// Texture & Model Loaders
-const textureLoader = new THREE.TextureLoader();
-const gltfLoader = new GLTFLoader();
+// Texture & Model Loaders with LoadingManager for performance monitoring
+const loadingManager = new THREE.LoadingManager();
+const loadingBar = document.getElementById('loading-bar');
+const loadingStatus = document.getElementById('loading-status');
+const loadingOverlay = document.getElementById('loading-overlay');
+
+loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
+    const progress = (itemsLoaded / itemsTotal) * 100;
+    if (loadingBar) loadingBar.style.width = `${progress}%`;
+    if (loadingStatus) loadingStatus.innerText = `Downloading: ${url.split('/').pop()}...`;
+};
+
+loadingManager.onLoad = () => {
+    if (loadingStatus) loadingStatus.innerText = "System Ready. Initializing Simulation...";
+    setTimeout(() => {
+        if (loadingOverlay) {
+            loadingOverlay.style.opacity = '0';
+            setTimeout(() => loadingOverlay.style.display = 'none', 500);
+        }
+    }, 500);
+};
+
+loadingManager.onError = (url) => {
+    console.error('Loading error:', url);
+    Notifications.show(`CORE SYNC ERROR: Failed to load ${url}`, 'error');
+};
+
+const textureLoader = new THREE.TextureLoader(loadingManager);
+const gltfLoader = new GLTFLoader(loadingManager);
 
 // Glitch Fallback Texture (Classic Magenta/Black Checkerboard)
 function createGlitchTexture() {
@@ -1174,16 +1199,23 @@ function createParticle(pos, color) {
 }
 
 function updateParticles() {
-    for (let i = particles.length - 1; i >= 0; i--) {
+    if (particles.length === 0) return;
+    
+    // Process particles in-place for better performance
+    let j = 0;
+    for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         p.mesh.position.add(p.velocity);
         p.life -= 0.02;
-        p.mesh.scale.set(p.life, p.life, p.life);
-        if (p.life <= 0) {
+        
+        if (p.life > 0) {
+            p.mesh.scale.set(p.life, p.life, p.life);
+            particles[j++] = p;
+        } else {
             scene.remove(p.mesh);
-            particles.splice(i, 1);
         }
     }
+    particles.length = j;
 }
 
 // Materials
@@ -1714,6 +1746,7 @@ function updateShopPreviewBg() {
 }
 
 function animateDecorativeObjects(objects) {
+    const now = Date.now();
     objects.forEach(obj => {
         if (obj.rotationSpeed) {
             obj.mesh.rotation.y += obj.rotationSpeed;
@@ -1724,7 +1757,7 @@ function animateDecorativeObjects(objects) {
             if (obj.mesh.position.y < -50) obj.mesh.position.y = 50;
         }
         if (obj.floatSpeed) {
-            obj.mesh.position.y = obj.initialY + Math.sin(Date.now() * 0.001 * obj.floatSpeed * 50) * 2;
+            obj.mesh.position.y = obj.initialY + Math.sin(now * 0.001 * obj.floatSpeed * 50) * 2;
         }
     });
 }
