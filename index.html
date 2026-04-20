@@ -39,7 +39,7 @@
         <p data-t="controls">Use Arrow Keys to move</p>
         <p><span data-t="score">Score</span>: <span id="score">0</span> | <span data-t="high">High</span>: <span id="high-score">0</span> | <span data-t="coins">Coins</span>: <span id="coins">0</span></p>
         <div class="hud-controls">
-            <button id="mod-picker-btn" class="icon-btn" style="display: none;">🧩</button>
+            <button id="mod-picker-btn" class="icon-btn" style="display: none;">🎨</button>
             <button id="perf-btn" class="icon-btn">⚡</button>
             <button id="pause-btn" class="icon-btn">⏸</button>
             <button id="mute-btn" class="icon-btn">🔊</button>
@@ -73,20 +73,15 @@
                 <a href="legal/TERMS.md" target="_blank">Terms</a> | 
                 <a href="legal/PRIVACY.md" target="_blank">Privacy</a> | 
                 <a href="legal/COOKIES.md" target="_blank">Cookies</a> |
-                <a href="legal/MODDING_GUIDELINES.md" target="_blank">Modding</a>
+                <a href="legal/MODDING_GUIDELINES.md" target="_blank">Themes</a>
             </div>
         </div>
     </div>
     <div id="consent-overlay" style="display: none;">
         <div id="consent-modal">
             <h2>Welcome to Space Journey</h2>
-            <p>To provide the best experience, we use browser local storage to save your progress and preferences. This data stays on your device.</p>
-            <p>We also offer an <strong>optional</strong> feature to detect your language based on your IP address. This is only activated if you choose to enable it below.</p>
-            <div class="consent-options">
-                <label>
-                    <input type="checkbox" id="geo-consent"> 🌐 Enable automatic language detection (requires IP check)
-                </label>
-            </div>
+            <p>To provide the best experience, we use browser local storage to save your progress and preferences. <strong>This data stays entirely on your device and is never sent to a server.</strong></p>
+            <p>We do not track your IP address, use cookies, or collect any personal information.</p>
             <p class="small-text">By clicking "Accept & Play", you agree to our <a href="legal/TERMS.md" target="_blank">Terms of Service</a> and <a href="legal/PRIVACY.md" target="_blank">Privacy Policy</a>.</p>
             <div class="menu-buttons">
                 <button id="accept-consent-btn">Accept & Play</button>
@@ -109,9 +104,9 @@
     </div>
     <div id="mod-picker-overlay" style="display: none;">
         <div id="mod-picker">
-            <h2 data-t="mod_picker">Mod Picker</h2>
+            <h2 data-t="mod_picker">Theme Customization</h2>
             <div class="security-warning">
-                ⚠️ <strong>SECURITY WARNING:</strong> Third-party mods can execute code in your browser. Only load mods from trusted sources.
+                ⚠️ <strong>SECURITY WARNING:</strong> Third-party themes can execute code in your browser. Only load themes from trusted sources.
             </div>
             <div id="mod-list"></div>
             <button id="close-mod-picker-btn" data-t="back_to_menu">Back to Menu</button>

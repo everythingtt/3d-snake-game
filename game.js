@@ -22,12 +22,12 @@ const TRANSLATIONS = {
         back_to_menu: "Back to Menu",
         owned: "OWNED",
         not_enough_coins: "Not enough coins!",
-        mod_picker: "Mod Picker",
+        mod_picker: "Theme Customization",
         pause: "PAUSED",
         resume: "RESUME",
         coins: "Coins",
-        cheater_speed: "Cheater! Speed manipulation detected.",
-        cheater_tamper: "Cheater! Value tampering detected.",
+        cheater_speed: "Integrity Error: Movement speed anomaly detected.",
+        cheater_tamper: "Integrity Error: Value consistency check failed.",
         classic_green: "Classic Green",
         neon_blue: "Neon Blue",
         lava_flow: "Lava Flow",
@@ -55,12 +55,12 @@ const TRANSLATIONS = {
         back_to_menu: "العودة للقائمة",
         owned: "ممتلك",
         not_enough_coins: "ليس لديك عملات كافية!",
-        mod_picker: "منتقي التعديلات",
+        mod_picker: "تخصيص السمة",
         pause: "مؤقت",
         resume: "استئناف",
         coins: "العملات",
-        cheater_speed: "غشاش! تم كشف التلاعب بالسرعة.",
-        cheater_tamper: "غشاش! تم كشف التلاعب بالقيم.",
+        cheater_speed: "خطأ في النزاهة: تم كشف شذوذ في سرعة الحركة.",
+        cheater_tamper: "خطأ في النزاهة: فشل التحقق من اتساق القيم.",
         classic_green: "الأخضر الكلاسيكي",
         neon_blue: "أزرق النيون",
         lava_flow: "تدفق الحمم",
@@ -88,12 +88,12 @@ const TRANSLATIONS = {
         back_to_menu: "返回菜单",
         owned: "已拥有",
         not_enough_coins: "金币不足！",
-        mod_picker: "模组选择器",
+        mod_picker: "主题定制",
         pause: "已暂停",
         resume: "恢复游戏",
         coins: "金币",
-        cheater_speed: "作弊者！检测到速度篡改。",
-        cheater_tamper: "作弊者！检测到数值篡改。",
+        cheater_speed: "完整性错误：检测到移动速度异常。",
+        cheater_tamper: "完整性错误：数值一致性检查失败。",
         classic_green: "经典绿",
         neon_blue: "霓虹蓝",
         lava_flow: "岩浆流",
@@ -139,25 +139,9 @@ function setLanguage(lang) {
 }
 
 async function detectLanguage() {
-    try {
-        // Use a faster/simpler API for static sites
-        const response = await fetch('https://ipapi.co/json/').catch(() => null);
-        if (response && response.ok) {
-            const data = await response.json();
-            const country = data.country_code;
-            if (country === 'CN') {
-                setLanguage('zh');
-            } else if (['SA', 'AE', 'EG', 'JO', 'KW', 'QA', 'BH', 'OM', 'LB', 'IQ', 'DZ', 'MA', 'TN', 'LY', 'SD', 'YE'].includes(country)) {
-                setLanguage('ar');
-            } else {
-                setLanguage('en');
-            }
-        } else {
-            setLanguage('en');
-        }
-    } catch (e) {
-        setLanguage('en');
-    }
+    // REMOVED: IP-based geolocation removed to ensure maximum user privacy and zero unauthorized tracking risk.
+    // The game now relies strictly on manual user selection.
+    setLanguage('en');
 }
 
 // Skins configuration
@@ -314,7 +298,7 @@ const ModManager = {
             const basePath = `mods/${folder}/`;
             const res = await fetch(`${basePath}mod.json`);
             if (!res.ok) {
-                Notifications.show(`SIGNAL LOST: Failed to load mod config for "${folder}" (${res.status})`, 'warning');
+                Notifications.show(`System Alert: Failed to load theme config for "${folder}" (${res.status})`, 'warning');
                 return;
             }
             const modData = await res.json();
@@ -338,8 +322,8 @@ const ModManager = {
                         if (skin.headTexture) headTexture = await textureLoader.loadAsync(`${basePath}${skin.headTexture}`).catch(() => null);
                         if (skin.bodyTexture) bodyTexture = await textureLoader.loadAsync(`${basePath}${skin.bodyTexture}`).catch(() => null);
                         
-                        if (skin.headTexture && !headTexture) Notifications.show(`DATA CORRUPTION: Texture 404 - ${skin.headTexture}`, 'warning');
-                        if (skin.bodyTexture && !bodyTexture) Notifications.show(`DATA CORRUPTION: Texture 404 - ${skin.bodyTexture}`, 'warning');
+                        if (skin.headTexture && !headTexture) Notifications.show(`System Alert: Texture not found - ${skin.headTexture}`, 'warning');
+                        if (skin.bodyTexture && !bodyTexture) Notifications.show(`System Alert: Texture not found - ${skin.bodyTexture}`, 'warning');
 
                         if (headTexture || bodyTexture) {
                             this.assets.set(skinId, { headTexture, bodyTexture });
@@ -378,14 +362,14 @@ const ModManager = {
                             customModel = await gltfLoader.loadAsync(`${basePath}Background/Models/${bg.modelPath}`)
                                 .then(gltf => gltf.scene)
                                 .catch(() => {
-                                    Notifications.show(`VOID ERROR: Model 404 - ${bg.modelPath}`, 'warning');
+                                    Notifications.show(`System Alert: Model not found - ${bg.modelPath}`, 'warning');
                                     return null;
                                 });
                         }
                         if (bg.texturePath) {
                             envTexture = await textureLoader.loadAsync(`${basePath}Background/Textures/${bg.texturePath}`)
                                 .catch(() => {
-                                    Notifications.show(`DATA CORRUPTION: Texture 404 - ${bg.texturePath}`, 'warning');
+                                    Notifications.show(`System Alert: Texture not found - ${bg.texturePath}`, 'warning');
                                     return null;
                                 });
                         }
@@ -447,14 +431,14 @@ const ModManager = {
             
             this.mods.push({ folder, ...modData, ...modInfo });
             
-            // Show Mod Picker button if multiple mods exist
+            // Show Theme Customization button if multiple themes exist
             if (this.mods.length > 1) {
                 document.getElementById('mod-picker-btn').style.display = 'block';
             }
-            console.log(`Successfully loaded mod: ${modData.name}`);
+            console.log(`Successfully loaded theme: ${modData.name}`);
         } catch (e) {
-            console.error(`Failed to load mod from ${folder}:`, e);
-            Notifications.show(`MOD COLLAPSE: Critical error loading "${folder}"`, 'error');
+            console.error(`Failed to load theme from ${folder}:`, e);
+            Notifications.show(`System Alert: Critical error loading "${folder}"`, 'error');
         }
     }
 };
@@ -1963,16 +1947,10 @@ const Consent = {
         return true;
     },
     accept() {
-        const geoEnabled = document.getElementById('geo-consent').checked;
         Security.save('snake3d_consented', true);
-        Security.save('snake3d_geo_consent', geoEnabled);
         document.getElementById('consent-overlay').style.display = 'none';
         
-        if (geoEnabled) {
-            detectLanguage();
-        } else {
-            setLanguage('en');
-        }
+        setLanguage('en');
         
         // Load mods after consent
         ModManager.loadMods();
@@ -1986,11 +1964,6 @@ document.getElementById('accept-consent-btn').onclick = () => {
 
 // Initialize
 if (Consent.check()) {
-    const geoEnabled = Security.load('snake3d_geo_consent', false);
-    if (geoEnabled) {
-        detectLanguage();
-    } else {
-        setLanguage('en');
-    }
+    setLanguage('en');
     ModManager.loadMods();
 }
