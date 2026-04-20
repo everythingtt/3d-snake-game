@@ -98,14 +98,7 @@ All customization assets must be free of:
 - CASM (Child Abuse Sexual Material).
 - Any executable code or scripts.
 
-For full details, see our [Modding Guidelines](legal/MODDING_GUIDELINES.md).    }
-  ]
-}
-```
-
----
-
-### 6. Metadata Requirements
+For full details, see our [Theme Customization Guidelines](legal/MODDING_GUIDELINES.md).
 
 To make your mod look professional in the **Mod Picker**, include these fields in `mod.json`:
 - `title`: The display title for the mod picker (e.g., "The Void Expansion")

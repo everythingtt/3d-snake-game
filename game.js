@@ -473,6 +473,12 @@ const Security = {
         const val = this.deobfuscate(data);
         return val !== null ? (isNaN(val) ? (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{')) ? val : val) : parseInt(val)) : defaultValue;
     },
+    resetData() {
+        if (confirm("DANGER: This will permanently delete all your game progress, coins, and settings. Are you sure?")) {
+            localStorage.clear();
+            location.reload();
+        }
+    },
     validateMove(lastTime, interval) {
         const now = Date.now();
         // Allow a small 10ms grace period for browser timing jitter
@@ -1842,6 +1848,11 @@ document.getElementById('shop-btn').onclick = () => {
 document.getElementById('close-shop-btn').onclick = () => {
     audioManager.playUiClick();
     document.getElementById('shop-overlay').style.display = 'none';
+};
+
+document.getElementById('reset-data-btn').onclick = () => {
+    audioManager.playUiClick();
+    Security.resetData();
 };
 
 document.getElementById('start-btn').onclick = () => {
