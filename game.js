@@ -1826,6 +1826,7 @@ let isPaused = false;
 let isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 let isLowPerformance = false;
 let isFreeCamera = Security.load('snake3d_free_cam', false);
+let keysPressed = {};
 let particles = [];
 let decorativeObjects = [];
 let cheaterDetected = false;
@@ -3262,12 +3263,63 @@ document.querySelectorAll('button').forEach(btn => {
 });
 
 function onKeyDown(event) {
+    keysPressed[event.key.toLowerCase()] = true;
+
+    // Global shortcuts (available even if game not started, but some only make sense then)
+    if (event.key.toLowerCase() === 's' || event.key.toLowerCase() === 'b') {
+        const shopOverlay = document.getElementById('shop-overlay');
+        if (shopOverlay.style.display === 'flex') {
+            document.getElementById('close-shop-btn').click();
+        } else {
+            document.getElementById('shop-btn').click();
+        }
+        return;
+    }
+
+    if (event.key.toLowerCase() === 'f') {
+        document.getElementById('perf-btn').click();
+        return;
+    }
+
+    if (event.key.toLowerCase() === 'c') {
+        isFreeCamera = !isFreeCamera;
+        Security.save('snake3d_free_cam', isFreeCamera);
+        audioManager.playUiClick();
+        if (isFreeCamera) {
+            controls.enableRotate = true;
+        } else if (isTouchDevice) {
+            controls.enableRotate = false;
+        }
+        // Sync checkbox in settings if open
+        const cb = document.getElementById('free-cam-checkbox');
+        if (cb) cb.checked = isFreeCamera;
+        Notifications.show(isFreeCamera ? "FREE CAMERA: ON" : "FREE CAMERA: OFF", 'warning');
+        return;
+    }
+
+    if (event.key === '+' || event.key === '=') {
+        audioManager.setMusicVolume(Math.min(1, audioManager.musicVolume + 0.1));
+        audioManager.setSfxVolume(Math.min(1, audioManager.sfxVolume + 0.1));
+        Notifications.show(`VOLUME: ${Math.round(audioManager.musicVolume * 100)}%`, 'warning');
+        return;
+    }
+
+    if (event.key === '-' || event.key === '_') {
+        audioManager.setMusicVolume(Math.max(0, audioManager.musicVolume - 0.1));
+        audioManager.setSfxVolume(Math.max(0, audioManager.sfxVolume - 0.1));
+        Notifications.show(`VOLUME: ${Math.round(audioManager.musicVolume * 100)}%`, 'warning');
+        return;
+    }
+
     if (!gameStarted) return;
-    if (event.key === 'p' || event.key === 'P' || event.key === ' ') {
+    
+    if (event.key.toLowerCase() === 'p' || event.key === ' ') {
         togglePause();
         return;
     }
+    
     if (isPaused) return;
+    
     switch (event.key) {
         case 'ArrowUp': if (direction.z === 0) nextDirection.set(0, 0, -1); break;
         case 'ArrowDown': if (direction.z === 0) nextDirection.set(0, 0, 1); break;
@@ -3276,13 +3328,42 @@ function onKeyDown(event) {
     }
 }
 
+function onKeyUp(event) {
+    keysPressed[event.key.toLowerCase()] = false;
+}
+
 function animate() {
      requestAnimationFrame(animate);
      update();
      updateParticles();
      animateDecorativeObjects(decorativeObjects);
      
-     if (snake.length > 0 && !isFreeCamera) {
+     if (isFreeCamera) {
+         // WASD movement for free camera
+         const moveSpeed = 0.5;
+         const forward = new THREE.Vector3();
+         camera.getWorldDirection(forward);
+         forward.y = 0; // Keep movement on ground plane
+         forward.normalize();
+         
+         const right = new THREE.Vector3();
+         right.crossVectors(forward, camera.up).normalize();
+
+         if (keysPressed['w']) camera.position.addScaledVector(forward, moveSpeed);
+         if (keysPressed['s']) camera.position.addScaledVector(forward, -moveSpeed);
+         if (keysPressed['a']) camera.position.addScaledVector(right, -moveSpeed);
+         if (keysPressed['d']) camera.position.addScaledVector(right, moveSpeed);
+         if (keysPressed['q']) camera.position.y += moveSpeed;
+         if (keysPressed['e']) camera.position.y -= moveSpeed;
+         
+         // In free camera mode, we still want to look at something if needed, 
+         // but usually OrbitControls handles the "lookAt" via its target.
+         // If we move the camera manually, OrbitControls target stays behind.
+         // Let's update the target to move with the camera to keep it intuitive.
+         controls.target.addScaledVector(forward, (keysPressed['w'] ? moveSpeed : 0) + (keysPressed['s'] ? -moveSpeed : 0));
+         controls.target.addScaledVector(right, (keysPressed['a'] ? -moveSpeed : 0) + (keysPressed['d'] ? moveSpeed : 0));
+         controls.target.y += (keysPressed['q'] ? moveSpeed : 0) + (keysPressed['e'] ? -moveSpeed : 0);
+     } else if (snake.length > 0) {
          const headPos = snake[0].pos;
          if (isTouchDevice) {
              // Static bird's eye view for mobile
@@ -3311,6 +3392,7 @@ function animate() {
 }
 
 window.addEventListener('keydown', onKeyDown);
+window.addEventListener('keyup', onKeyUp);
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
