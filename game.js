@@ -2697,11 +2697,13 @@ function spawnCoin() {
         spawnCoin();
         return;
     }
-    // Spinning coin mesh (cylinder as a flat disk)
-    const geometry = new THREE.CylinderGeometry(0.35, 0.35, 0.1, 16);
+    // Spinning coin mesh (cylinder as a flat disk, or sphere on mobile)
+    const geometry = isTouchDevice ? 
+        new THREE.SphereGeometry(0.35, 16, 16) : 
+        new THREE.CylinderGeometry(0.35, 0.35, 0.1, 16);
     const mesh = new THREE.Mesh(geometry, coinMaterial);
     mesh.position.copy(pos);
-    mesh.rotation.x = Math.PI / 2; // Flat disk facing camera
+    if (!isTouchDevice) mesh.rotation.x = Math.PI / 2; // Flat disk facing camera
     scene.add(mesh);
     coin = { pos, mesh };
 }
@@ -3587,10 +3589,35 @@ function animate() {
 
 window.addEventListener('keydown', onKeyDown);
 window.addEventListener('keyup', onKeyUp);
+
+let resizeTimeout;
 window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    // Basic debounce for mobile rotation
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        // Update main game renderer
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // Update shop renderer if it exists and is visible
+        const shopOverlay = document.getElementById('shop-overlay');
+        if (shopRenderer && shopOverlay && shopOverlay.style.display !== 'none') {
+            const container = document.getElementById('skin-preview-container');
+            if (container) {
+                shopCamera.aspect = container.clientWidth / container.clientHeight;
+                shopCamera.updateProjectionMatrix();
+                shopRenderer.setSize(container.clientWidth, container.clientHeight);
+            }
+        }
+        
+        // Mobile-specific camera adjustments on rotation
+        if (isTouchDevice && !isFreeCamera) {
+            // Re-center camera for bird's eye view
+            camera.position.set(0, 30, 0);
+            camera.lookAt(0, 0, 0);
+        }
+    }, 100);
 });
 
 animate();

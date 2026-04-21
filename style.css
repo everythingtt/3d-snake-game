@@ -78,6 +78,7 @@ body {
 #game-container {
     width: 100vw;
     height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile */
 }
 
 /* Loading Screen */
@@ -87,6 +88,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
+    height: 100dvh;
     background: #000;
     display: flex;
     justify-content: center;
@@ -130,6 +132,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
+    height: 100dvh;
     background: rgba(0,0,0,0.8);
     display: flex;
     justify-content: center;
@@ -143,6 +146,9 @@ body {
     padding: 2rem;
     border-radius: 10px;
     border: 2px solid #00ff00;
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow-y: auto;
 }
 
 .menu-buttons {
@@ -150,6 +156,7 @@ body {
     gap: 1rem;
     justify-content: center;
     margin-top: 1rem;
+    flex-wrap: wrap;
 }
 
 #shop-overlay {
@@ -158,6 +165,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
+    height: 100dvh;
     background: rgba(0,0,0,0.9);
     display: flex;
     justify-content: center;
@@ -176,6 +184,7 @@ body {
     display: flex;
     flex-direction: column;
     max-height: 90vh;
+    max-height: 90dvh;
 }
 
 #shop-content {
@@ -189,6 +198,7 @@ body {
     gap: 1rem;
     justify-content: center;
     margin-top: 1rem;
+    flex-wrap: wrap;
 }
 
 .danger-btn {
@@ -212,6 +222,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
+    height: 100dvh;
     background: rgba(0,0,0,0.9);
     display: flex;
     justify-content: center;
@@ -227,6 +238,8 @@ body {
     border-radius: 15px;
     border: 2px solid #00ff00;
     text-align: center;
+    max-height: 90dvh;
+    overflow-y: auto;
 }
 
 #mod-list {
@@ -257,6 +270,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
+    height: 100dvh;
     background: rgba(0, 0, 0, 0.95);
     display: flex;
     justify-content: center;
@@ -272,6 +286,8 @@ body {
     max-width: 500px;
     text-align: center;
     box-shadow: 0 0 30px rgba(0, 255, 0, 0.2);
+    max-height: 90dvh;
+    overflow-y: auto;
 }
 
 .consent-options {
@@ -329,6 +345,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
+    height: 100dvh;
     background: rgba(0, 0, 0, 0.9);
     display: flex;
     justify-content: center;
@@ -344,6 +361,8 @@ body {
     width: 90%;
     max-width: 400px;
     text-align: center;
+    max-height: 90dvh;
+    overflow-y: auto;
 }
 
 .setting-item {
@@ -791,5 +810,31 @@ p {
         font-size: 0.8rem;
         bottom: 10px;
         right: 10px;
+    }
+}
+
+/* Landscape Mode Optimizations */
+@media (max-height: 500px) and (orientation: landscape) {
+    #menu, #shop, #settings-modal, #mod-picker, #consent-modal {
+        padding: 1rem;
+        width: 95%;
+    }
+
+    #skin-preview-container {
+        height: 100px;
+    }
+
+    .key-config-grid {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .hud-controls {
+        margin-top: 2px;
+        gap: 0.3rem;
+    }
+
+    .icon-btn {
+        font-size: 1rem;
+        padding: 2px 6px;
     }
 }
