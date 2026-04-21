@@ -3251,23 +3251,36 @@ window.onerror = function(message, source, lineno, colno, error) {
 
 // Consent Management
 const Consent = {
-    VERSION: '1.1.0', // Updated version to trigger re-consent for legacy users
+    VERSION: '1.2.0', // Updated version for Arbitration & Legal Agreement
     check() {
         const consented = Security.load('snake3d_consented', false);
         const consentVersion = Security.load('snake3d_consent_version', '1.0.0');
         
-        // Show overlay if never consented OR if they are a legacy user (older version)
         if (!consented || consentVersion !== this.VERSION) {
             document.getElementById('consent-overlay').style.display = 'flex';
             
-            // For legacy users, we might want to pre-check if they already had some settings
-            // but for legal safety, we start fresh with the new opt-in checkbox.
+            // Add listener for legal checkbox to enable button
+            const legalCheckbox = document.getElementById('legal-consent-checkbox');
+            const acceptBtn = document.getElementById('accept-consent-btn');
+            if (legalCheckbox && acceptBtn) {
+                legalCheckbox.onchange = (e) => {
+                    acceptBtn.disabled = !e.target.checked;
+                };
+            }
             return false;
         }
         return true;
     },
     accept() {
         const geoCheckbox = document.getElementById('geo-consent-checkbox');
+        const legalCheckbox = document.getElementById('legal-consent-checkbox');
+        
+        // Final validation
+        if (!legalCheckbox || !legalCheckbox.checked) {
+            alert("You must agree to the Terms of Service to play.");
+            return;
+        }
+
         const geoConsented = geoCheckbox ? geoCheckbox.checked : false;
         
         Security.save('snake3d_consented', true);
@@ -3276,13 +3289,9 @@ const Consent = {
         
         document.getElementById('consent-overlay').style.display = 'none';
         
-        // Clear cached language to allow fresh detection for legacy users
+        // Clear cached language for fresh detection
         Security.save('snake3d_lang_cache', null);
-        
-        // Now that we have consent (or not), detect language
         detectLanguage();
-        
-        // Load mods after consent
         ModManager.loadMods();
     }
 };

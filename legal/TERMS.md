@@ -18,7 +18,16 @@ We grant you a personal, non-exclusive, non-transferable, revocable license to u
 - You agree not to use the customization system to bypass security features or distribute malicious software.
 
 ## 4. Limitation of Liability
-THE GAME IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND. IN NO EVENT SHALL THE DEVELOPERS BE LIABLE FOR ANY DAMAGES ARISING FROM THE USE OF THE GAME OR THIRD-PARTY MODS.
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE DEVELOPERS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS OR REVENUES. IN NO EVENT SHALL OUR AGGREGATE LIABILITY EXCEED THE TOTAL AMOUNT PAID BY YOU TO US (IF ANY) FOR THE GAME. THE GAME IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND.
 
-## 5. Changes to Terms
-We reserve the right to modify these terms at any time. Your continued use of the Game constitutes acceptance of the new terms.
+## 5. Binding Arbitration & Class Action Waiver
+**PLEASE READ THIS SECTION CAREFULLY. IT AFFECTS YOUR LEGAL RIGHTS.**
+- **Arbitration:** You agree that any dispute, claim, or controversy arising out of or relating to these Terms or the Game shall be settled by binding individual arbitration, rather than in court.
+- **Class Action Waiver:** YOU AND THE DEVELOPERS AGREE THAT EACH MAY BRING CLAIMS AGAINST THE OTHER ONLY IN YOUR OR ITS INDIVIDUAL CAPACITY, AND NOT AS A PLAINTIFF OR CLASS MEMBER IN ANY PURPORTED CLASS OR REPRESENTATIVE PROCEEDING.
+- **Governing Law:** These Terms shall be governed by and construed in accordance with the laws of the jurisdiction in which the developer resides, without regard to its conflict of law principles.
+
+## 6. Indemnification
+You agree to defend, indemnify, and hold harmless the developers from and against any claims, liabilities, damages, losses, and expenses (including reasonable legal fees) arising out of or in any way connected with your access to or use of the Game, your violation of these Terms, or your creation/use of third-party themes.
+
+## 7. Changes to Terms
+We reserve the right to modify these terms at any time. Significant changes will be communicated via a mandatory re-consent process within the Game. Your continued use of the Game constitutes acceptance of the new terms.
