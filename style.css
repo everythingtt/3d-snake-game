@@ -368,8 +368,23 @@ body {
 .key-config-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 8px;
     margin-top: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+/* Custom scrollbar for key config */
+.key-config-grid::-webkit-scrollbar {
+    width: 5px;
+}
+.key-config-grid::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+.key-config-grid::-webkit-scrollbar-thumb {
+    background: #00ff00;
+    border-radius: 5px;
 }
 
 .key-item {

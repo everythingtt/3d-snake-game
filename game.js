@@ -1826,7 +1826,18 @@ let isPaused = false;
 let isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 let isLowPerformance = false;
 let isFreeCamera = Security.load('snake3d_free_cam', false);
-let keyBinds = JSON.parse(Security.load('snake3d_keybinds', '{"up":"ArrowUp","down":"ArrowDown","left":"ArrowLeft","right":"ArrowRight"}'));
+let keyBinds = JSON.parse(Security.load('snake3d_keybinds', JSON.stringify({
+    up: "ArrowUp",
+    down: "ArrowDown",
+    left: "ArrowLeft",
+    right: "ArrowRight",
+    shop: "s",
+    perf: "f",
+    freeCam: "c",
+    pause: "p",
+    volUp: "+",
+    volDown: "-"
+})));
 let keysPressed = {};
 let particles = [];
 let decorativeObjects = [];
@@ -3339,12 +3350,17 @@ document.querySelectorAll('button').forEach(btn => {
 });
 
 function onKeyDown(event) {
-    keysPressed[event.key.toLowerCase()] = true;
+    const key = event.key.toLowerCase();
+    const originalKey = event.key; // For volume +/- which might be case-sensitive in some layouts
+    keysPressed[key] = true;
 
-    // Global shortcuts (available even if game not started, but some only make sense then)
-    if (rebindingAction) return; // Don't trigger shortcuts while rebinding
+    // Global shortcuts (available even if game not started)
+    if (rebindingAction) return;
 
-    if (event.key.toLowerCase() === 's' || event.key.toLowerCase() === 'b') {
+    // Helper to check keybinds
+    const isBind = (action, k) => keyBinds[action].toLowerCase() === k.toLowerCase() || keyBinds[action] === k;
+
+    if (isBind('shop', originalKey) || isBind('shop', 'b')) { // Keep 'b' as a hardcoded fallback for shop
         const shopOverlay = document.getElementById('shop-overlay');
         if (shopOverlay.style.display === 'flex') {
             document.getElementById('close-shop-btn').click();
@@ -3354,35 +3370,40 @@ function onKeyDown(event) {
         return;
     }
 
-    if (event.key.toLowerCase() === 'f') {
+    if (isBind('perf', originalKey)) {
         document.getElementById('perf-btn').click();
         return;
     }
 
-    if (event.key.toLowerCase() === 'c') {
+    if (isBind('freeCam', originalKey)) {
         isFreeCamera = !isFreeCamera;
         Security.save('snake3d_free_cam', isFreeCamera);
         audioManager.playUiClick();
         if (isFreeCamera) {
             controls.enableRotate = true;
+            if (isTouchDevice) {
+                document.getElementById('camera-swipe-area').style.display = 'block';
+                document.getElementById('touch-controls').style.display = 'none';
+            }
         } else if (isTouchDevice) {
             controls.enableRotate = false;
+            document.getElementById('camera-swipe-area').style.display = 'none';
+            document.getElementById('touch-controls').style.display = 'flex';
         }
-        // Sync checkbox in settings if open
         const cb = document.getElementById('free-cam-checkbox');
         if (cb) cb.checked = isFreeCamera;
         Notifications.show(isFreeCamera ? "FREE CAMERA: ON" : "FREE CAMERA: OFF", 'warning');
         return;
     }
 
-    if (event.key === '+' || event.key === '=') {
+    if (isBind('volUp', originalKey) || originalKey === '=') {
         audioManager.setMusicVolume(Math.min(1, audioManager.musicVolume + 0.1));
         audioManager.setSfxVolume(Math.min(1, audioManager.sfxVolume + 0.1));
         Notifications.show(`VOLUME: ${Math.round(audioManager.musicVolume * 100)}%`, 'warning');
         return;
     }
 
-    if (event.key === '-' || event.key === '_') {
+    if (isBind('volDown', originalKey) || originalKey === '_') {
         audioManager.setMusicVolume(Math.max(0, audioManager.musicVolume - 0.1));
         audioManager.setSfxVolume(Math.max(0, audioManager.sfxVolume - 0.1));
         Notifications.show(`VOLUME: ${Math.round(audioManager.musicVolume * 100)}%`, 'warning');
@@ -3391,26 +3412,18 @@ function onKeyDown(event) {
 
     if (!gameStarted) return;
     
-    if (event.key.toLowerCase() === 'p' || event.key === ' ') {
+    if (isBind('pause', originalKey) || originalKey === ' ') { // Keep space as a hardcoded fallback for pause
         togglePause();
         return;
     }
     
     if (isPaused) return;
     
-    // Check keybinds
-    if (event.key === keyBinds.up) { if (direction.z === 0) nextDirection.set(0, 0, -1); }
-    else if (event.key === keyBinds.down) { if (direction.z === 0) nextDirection.set(0, 0, 1); }
-    else if (event.key === keyBinds.left) { if (direction.x === 0) nextDirection.set(-1, 0, 0); }
-    else if (event.key === keyBinds.right) { if (direction.x === 0) nextDirection.set(1, 0, 0); }
-    
-    // Fallback switch for Arrow Keys (always work as defaults)
-    switch (event.key) {
-        case 'ArrowUp': if (direction.z === 0) nextDirection.set(0, 0, -1); break;
-        case 'ArrowDown': if (direction.z === 0) nextDirection.set(0, 0, 1); break;
-        case 'ArrowLeft': if (direction.x === 0) nextDirection.set(-1, 0, 0); break;
-        case 'ArrowRight': if (direction.x === 0) nextDirection.set(1, 0, 0); break;
-    }
+    // Movement Binds
+    if (originalKey === keyBinds.up || originalKey === 'ArrowUp') { if (direction.z === 0) nextDirection.set(0, 0, -1); }
+    else if (originalKey === keyBinds.down || originalKey === 'ArrowDown') { if (direction.z === 0) nextDirection.set(0, 0, 1); }
+    else if (originalKey === keyBinds.left || originalKey === 'ArrowLeft') { if (direction.x === 0) nextDirection.set(-1, 0, 0); }
+    else if (originalKey === keyBinds.right || originalKey === 'ArrowRight') { if (direction.x === 0) nextDirection.set(1, 0, 0); }
 }
 
 function onKeyUp(event) {
