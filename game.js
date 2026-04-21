@@ -2370,23 +2370,21 @@ function updateBackground() {
                 vertexShader: `
                     uniform vec3 sunDirection;
                     varying vec2 vUv;
-                    varying vec3 vNormal;
-                    varying vec3 vSunDirection;
+                    varying vec3 vWorldNormal;
                     void main() {
                         vUv = uv;
-                        vNormal = normalize(normalMatrix * normal);
-                        vSunDirection = normalize(sunDirection);
+                        vWorldNormal = normalize(vec3(modelMatrix * vec4(normal, 0.0)));
                         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
                     }
                 `,
                 fragmentShader: `
                     uniform sampler2D dayTexture;
                     uniform sampler2D nightTexture;
+                    uniform vec3 sunDirection;
                     varying vec2 vUv;
-                    varying vec3 vNormal;
-                    varying vec3 vSunDirection;
+                    varying vec3 vWorldNormal;
                     void main() {
-                        float intensity = dot(vNormal, vSunDirection);
+                        float intensity = dot(normalize(vWorldNormal), normalize(sunDirection));
                         vec4 dayColor = texture2D(dayTexture, vUv);
                         vec4 nightColor = texture2D(nightTexture, vUv);
                         
@@ -3040,23 +3038,21 @@ function updateShopPreviewBg() {
                 vertexShader: `
                     uniform vec3 sunDirection;
                     varying vec2 vUv;
-                    varying vec3 vNormal;
-                    varying vec3 vSunDirection;
+                    varying vec3 vWorldNormal;
                     void main() {
                         vUv = uv;
-                        vNormal = normalize(normalMatrix * normal);
-                        vSunDirection = normalize(sunDirection);
+                        vWorldNormal = normalize(vec3(modelMatrix * vec4(normal, 0.0)));
                         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
                     }
                 `,
                 fragmentShader: `
                     uniform sampler2D dayTexture;
                     uniform sampler2D nightTexture;
+                    uniform vec3 sunDirection;
                     varying vec2 vUv;
-                    varying vec3 vNormal;
-                    varying vec3 vSunDirection;
+                    varying vec3 vWorldNormal;
                     void main() {
-                        float intensity = dot(vNormal, vSunDirection);
+                        float intensity = dot(normalize(vWorldNormal), normalize(sunDirection));
                         vec4 dayColor = texture2D(dayTexture, vUv);
                         vec4 nightColor = texture2D(nightTexture, vUv);
                         float mixRatio = smoothstep(-0.2, 0.2, intensity);
