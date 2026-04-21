@@ -1858,7 +1858,8 @@ class AudioManager {
         this.masterGain = null;
         this.musicGain = null;
         this.sfxGain = null;
-        this.reverbNode = null;
+        this.musicReverb = null;
+        this.sfxReverb = null;
         this.musicLoopId = null;
         this.currentMusicConfig = null;
         this.externalMusicSource = null;
@@ -1869,7 +1870,10 @@ class AudioManager {
     }
 
     init() {
-        if (this.ctx) return;
+        if (this.ctx) {
+            if (this.ctx.state === 'suspended') this.ctx.resume();
+            return;
+        }
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         
         this.masterGain = this.ctx.createGain();
@@ -1885,9 +1889,16 @@ class AudioManager {
         this.musicGain.connect(this.masterGain);
         this.sfxGain.connect(this.masterGain);
         
-        // Create Reverb (connect sfx/music to reverb as needed)
-        this.reverbNode = this.ctx.createConvolver();
-        this.createReverb(1.5, 2.0); 
+        // Create separate reverb paths for music and SFX to prevent bleeding
+        this.musicReverb = this.ctx.createConvolver();
+        this.sfxReverb = this.ctx.createConvolver();
+        
+        const impulse = this.createReverbBuffer(1.5, 2.0);
+        this.musicReverb.buffer = impulse;
+        this.sfxReverb.buffer = impulse;
+
+        this.musicReverb.connect(this.musicGain);
+        this.sfxReverb.connect(this.sfxGain);
         
         this.masterGain.connect(this.ctx.destination);
     }
@@ -1909,8 +1920,8 @@ class AudioManager {
     }
 
     // Procedural Reverb Impulse Response
-    createReverb(duration, decay) {
-        if (!this.ctx) return;
+    createReverbBuffer(duration, decay) {
+        if (!this.ctx) return null;
         const sampleRate = this.ctx.sampleRate;
         const length = sampleRate * duration;
         const impulse = this.ctx.createBuffer(2, length, sampleRate);
@@ -1920,7 +1931,7 @@ class AudioManager {
                 channel[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / length, decay);
             }
         }
-        this.reverbNode.buffer = impulse;
+        return impulse;
     }
 
     async loadExternalAudio(url) {
@@ -1952,8 +1963,8 @@ class AudioManager {
         if (this.currentMusicConfig === bg.music) return;
         this.currentMusicConfig = bg.music;
         
-        if (this.ctx) {
-            this.createReverb(2.0, bg.music.reverb * 5 || 2.0);
+        if (this.ctx && this.musicReverb) {
+            this.musicReverb.buffer = this.createReverbBuffer(2.0, bg.music.reverb * 5 || 2.0);
         }
         this.startBackgroundMusic();
     }
@@ -1993,12 +2004,14 @@ class AudioManager {
         osc.connect(filter);
         filter.connect(gain);
         
-        // Route to reverb if requested
+        // Route to correct channel and reverb
+        const targetGain = options.isMusic ? this.musicGain : this.sfxGain;
+        const targetReverb = options.isMusic ? this.musicReverb : this.sfxReverb;
+
         if (options.useReverb) {
-            gain.connect(this.reverbNode);
-            this.reverbNode.connect(options.isMusic ? this.musicGain : this.sfxGain);
+            gain.connect(targetReverb);
         } else {
-            gain.connect(options.isMusic ? this.musicGain : this.sfxGain);
+            gain.connect(targetGain);
         }
 
         osc.start(time);
