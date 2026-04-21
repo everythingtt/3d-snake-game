@@ -3,7 +3,7 @@
 Last Updated: April 20, 2026
 
 ## 1. Information We Collect
-- **IP Address:** Only with your explicit **opt-in** consent via the "Enable automatic language detection" checkbox, we will use your IP address to approximate your location for the sole purpose of setting the Game's language (e.g., English, Arabic, Chinese, French, Spanish, Portuguese, Russian, Hindi, German, Korean, Japanese, Mongolian, Ukrainian, Amharic). This is a one-time lookup; your IP address is processed in real-time and **never stored** on our servers. If you do not opt-in, we use your browser's language settings (which does not involve IP tracking) or default to English.
+- **IP Address:** Only with your explicit **opt-in** consent via the "Enable automatic language detection" checkbox, we will use your IP address to approximate your location for the sole purpose of setting the Game's language (e.g., English, Arabic, Chinese, French, Spanish, Portuguese, Russian, Hindi, German, Korean, Japanese, Mongolian, Ukrainian, Amharic, Italian, Turkish, Persian). This is a one-time lookup; your IP address is processed in real-time and **never stored** on our servers. If you do not opt-in, we use your browser's language settings (which does not involve IP tracking) or default to English.
 - **Local Storage:** We use browser Local Storage to save your high scores, coins, owned items, and game settings locally on your device. This data is not transmitted to our servers.
 
 ## 2. Third-Party Services

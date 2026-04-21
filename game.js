@@ -174,6 +174,138 @@ const TRANSLATIONS = {
         event_horizon: "Horizonte de Eventos",
         mystery_void: "Vacío Misterioso"
     },
+    es: {
+        game_title: "Juego de la Serpiente 3D",
+        space_journey: "Viaje Espacial",
+        controls: "Usa las flechas para moverte",
+        score: "Puntos",
+        high: "Récord",
+        start_game: "Empezar",
+        open_shop: "Tienda",
+        skins: "Aspectos",
+        backgrounds: "Fondos",
+        back_to_menu: "Menú",
+        owned: "OBTENIDO",
+        not_enough_coins: "¡Faltan monedas!",
+        mod_picker: "Temas",
+        pause: "PAUSA",
+        resume: "REANUDAR",
+        coins: "Monedas",
+        cheater_speed: "Error de integridad: Velocidad anómala.",
+        cheater_tamper: "Error de integridad: Valores inconsistentes.",
+        classic_green: "Verde Clásico",
+        neon_blue: "Azul Neón",
+        lava_flow: "Lava",
+        golden_midas: "Midas de Oro",
+        void_walker: "Caminante del Vacío",
+        matrix_code: "Código Matrix",
+        deep_space: "Espacio Profundo",
+        neon_city: "Ciudad Neón",
+        sunset_grid: "Rejilla Atardecer",
+        matrix_void: "Vacío Matrix",
+        hellscape: "Infierno",
+        event_horizon: "Horizonte de Eventos",
+        mystery_void: "Vacío Misterioso"
+    },
+    it: {
+        game_title: "Gioco del Serpente 3D",
+        space_journey: "Viaggio Spaziale",
+        controls: "Usa le frecce per muoverti",
+        score: "Punteggio",
+        high: "Record",
+        start_game: "Inizia",
+        open_shop: "Negozio",
+        skins: "Skin",
+        backgrounds: "Sfondi",
+        back_to_menu: "Menu",
+        owned: "POSSEDUTO",
+        not_enough_coins: "Monete insufficienti!",
+        mod_picker: "Personalizza Temi",
+        pause: "PAUSA",
+        resume: "RIPRENDI",
+        coins: "Monete",
+        cheater_speed: "Errore di integrità: Velocità anomala rilevata.",
+        cheater_tamper: "Errore di integrità: Verifica valori fallita.",
+        classic_green: "Verde Classico",
+        neon_blue: "Blu Neon",
+        lava_flow: "Flusso di Lava",
+        golden_midas: "Mida d'Oro",
+        void_walker: "Viandante del Vuoto",
+        matrix_code: "Codice Matrix",
+        deep_space: "Spazio Profondo",
+        neon_city: "Città Neon",
+        sunset_grid: "Griglia Tramonto",
+        matrix_void: "Vuoto Matrix",
+        hellscape: "Inferno",
+        event_horizon: "Orizzonte degli Eventi",
+        mystery_void: "Vuoto Misterioso"
+    },
+    tr: {
+        game_title: "3D Yılan Oyunu",
+        space_journey: "Uzay Yolculuğu",
+        controls: "Hareket için ok tuşlarını kullanın",
+        score: "Skor",
+        high: "En Yüksek",
+        start_game: "Oyuna Başla",
+        open_shop: "Mağaza",
+        skins: "Kostümler",
+        backgrounds: "Arka Planlar",
+        back_to_menu: "Menüye Dön",
+        owned: "SAHİP",
+        not_enough_coins: "Yetersiz altın!",
+        mod_picker: "Tema Özelleştirme",
+        pause: "DURAKLATILDI",
+        resume: "DEVAM ET",
+        coins: "Altınlar",
+        cheater_speed: "Bütünlük Hatası: Anormal hız tespit edildi.",
+        cheater_tamper: "Bütünlük Hatası: Değer tutarlılık kontrolü başarısız.",
+        classic_green: "Klasik Yeşil",
+        neon_blue: "Neon Mavi",
+        lava_flow: "Lav Akışı",
+        golden_midas: "Altın Midas",
+        void_walker: "Boşluk Gezgini",
+        matrix_code: "Matrix Kodu",
+        deep_space: "Derin Uzay",
+        neon_city: "Neon Şehir",
+        sunset_grid: "Gün Batımı Izgarası",
+        matrix_void: "Matrix Boşluğu",
+        hellscape: "Cehennem",
+        event_horizon: "Olay Ufku",
+        mystery_void: "Gizemli Boşluk"
+    },
+    fa: {
+        game_title: "بازی مار سه بعدی",
+        space_journey: "سفر فضایی",
+        controls: "از کلیدهای پیکان برای حرکت استفاده کنید",
+        score: "امتیاز",
+        high: "بیشترین",
+        start_game: "شروع بازی",
+        open_shop: "فروشگاه",
+        skins: "پوسته‌ها",
+        backgrounds: "پس‌زمینه‌ها",
+        back_to_menu: "بازگشت به منو",
+        owned: "خریداری شده",
+        not_enough_coins: "سکه کافی نیست!",
+        mod_picker: "شخصی‌سازی تم",
+        pause: "توقف",
+        resume: "ادامه",
+        coins: "سکه‌ها",
+        cheater_speed: "خطای یکپارچگی: سرعت غیرطبیعی تشخیص داده شد.",
+        cheater_tamper: "خطای یکپارچگی: عدم تطابق مقادیر.",
+        classic_green: "سبز کلاسیک",
+        neon_blue: "آبی نئون",
+        lava_flow: "جریان گدازه",
+        golden_midas: "میداس طلایی",
+        void_walker: "رهرو خلاء",
+        matrix_code: "کد ماتریکس",
+        deep_space: "فضای عمیق",
+        neon_city: "شهر نئون",
+        sunset_grid: "شبکه غروب",
+        matrix_void: "خلاء ماتریکس",
+        hellscape: "جهنم",
+        event_horizon: "افق رویداد",
+        mystery_void: "خلاء مرموز"
+    },
     pt: {
         game_title: "Jogo da Cobra 3D",
         space_journey: "Jornada Espacial",
@@ -590,6 +722,10 @@ async function detectLanguage() {
             else if (['SA', 'AE', 'EG', 'JO', 'LB', 'MA', 'QA'].includes(countryCode)) detectedLang = 'ar';
             else if (countryCode === 'FR') detectedLang = 'fr';
             else if (countryCode === 'MX') detectedLang = 'es';
+            else if (countryCode === 'ES') detectedLang = 'es';
+            else if (countryCode === 'IT') detectedLang = 'it';
+            else if (countryCode === 'TR') detectedLang = 'tr';
+            else if (countryCode === 'IR') detectedLang = 'fa';
             else if (countryCode === 'BR') detectedLang = 'pt';
             else if (countryCode === 'RU') detectedLang = 'ru';
             else if (countryCode === 'IN') detectedLang = 'hi';
@@ -2429,10 +2565,17 @@ window.onerror = function(message, source, lineno, colno, error) {
 
 // Consent Management
 const Consent = {
+    VERSION: '1.1.0', // Updated version to trigger re-consent for legacy users
     check() {
         const consented = Security.load('snake3d_consented', false);
-        if (!consented) {
+        const consentVersion = Security.load('snake3d_consent_version', '1.0.0');
+        
+        // Show overlay if never consented OR if they are a legacy user (older version)
+        if (!consented || consentVersion !== this.VERSION) {
             document.getElementById('consent-overlay').style.display = 'flex';
+            
+            // For legacy users, we might want to pre-check if they already had some settings
+            // but for legal safety, we start fresh with the new opt-in checkbox.
             return false;
         }
         return true;
@@ -2443,8 +2586,12 @@ const Consent = {
         
         Security.save('snake3d_consented', true);
         Security.save('snake3d_geo_consented', geoConsented);
+        Security.save('snake3d_consent_version', this.VERSION);
         
         document.getElementById('consent-overlay').style.display = 'none';
+        
+        // Clear cached language to allow fresh detection for legacy users
+        Security.save('snake3d_lang_cache', null);
         
         // Now that we have consent (or not), detect language
         detectLanguage();
