@@ -2273,6 +2273,10 @@ function updateBackground() {
     ambientLight.intensity = bg.ambientLightIntensity !== undefined ? bg.ambientLightIntensity : 1.0;
     pointLight.color.set(bg.pointLightColor || 0xffffff);
     pointLight.intensity = bg.pointLightIntensity !== undefined ? bg.pointLightIntensity : 1.0;
+    
+    // Default light position
+    pointLight.position.set(10, 10, 10);
+    pointLight.distance = 100;
 
     gridHelper.material.color.set(bg.grid);
     gridHelper.material.opacity = bg.gridOpacity !== undefined ? bg.gridOpacity : 1.0;
@@ -2319,6 +2323,21 @@ function updateBackground() {
     // Create new decorative objects based on environment
     switch (bg.envType) {
         case 'planets':
+            // Add a Sun
+            const sunGeom = new THREE.SphereGeometry(15, 32, 32);
+            const sunMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
+            const sun = new THREE.Mesh(sunGeom, sunMat);
+            // Position sun far away to act as a distant light source
+            const sunPos = new THREE.Vector3(150, 50, 150);
+            sun.position.copy(sunPos);
+            scene.add(sun);
+            decorativeObjects.push({ mesh: sun, rotationSpeed: 0.0005 });
+
+            // Update light source to come from the Sun
+            pointLight.position.copy(sunPos);
+            pointLight.distance = 500; // Increase range for the sun
+            pointLight.intensity = 2.0; // Make sun bright
+
             if (isLowPerformance) {
                 // Simplified planets for performance
                 const earthGeom = new THREE.SphereGeometry(8, 16, 16);
@@ -2335,7 +2354,7 @@ function updateBackground() {
                 uniforms: {
                     dayTexture: { value: planetTextures.earthDay },
                     nightTexture: { value: planetTextures.earthNight },
-                    sunDirection: { value: new THREE.Vector3(1, 0.2, 1).normalize() }
+                    sunDirection: { value: sunPos.clone().normalize() }
                 },
                 vertexShader: `
                     uniform vec3 sunDirection;
@@ -2789,7 +2808,7 @@ function endGame(reason = null) {
 }
 
 // Shop Logic
-let shopScene, shopCamera, shopRenderer, shopSnake, shopGrid, shopStars;
+let shopScene, shopCamera, shopRenderer, shopSnake, shopGrid, shopStars, shopLight;
 let shopDecorativeObjects = [];
 let shopCurrentBgId = null;
 
@@ -2803,9 +2822,9 @@ function initShopPreview() {
     shopRenderer.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(shopRenderer.domElement);
 
-    const light = new THREE.PointLight(0xffffff, 1, 100);
-    light.position.set(5, 5, 5);
-    shopScene.add(light);
+    shopLight = new THREE.PointLight(0xffffff, 1, 100);
+    shopLight.position.set(5, 5, 5);
+    shopScene.add(shopLight);
     shopScene.add(new THREE.AmbientLight(0x404040));
     shopCamera.position.set(0, 2, 5);
     shopCamera.lookAt(0, 0, 0);
@@ -2929,6 +2948,12 @@ function updateShopPreviewBg() {
     shopScene.background = new THREE.Color(bg.color);
     shopScene.fog = new THREE.Fog(bg.fog, 5, 20);
     
+    // Reset shop light position
+    if (shopLight) {
+        shopLight.position.set(5, 5, 5);
+        shopLight.intensity = 1.0;
+    }
+
     // Update shop grid
     if (shopGrid) shopScene.remove(shopGrid);
     shopGrid = new THREE.GridHelper(10, 10, bg.grid, bg.grid);
@@ -2958,13 +2983,27 @@ function updateShopPreviewBg() {
 
     switch (bg.envType) {
         case 'planets':
+            // Add a small Sun for Shop
+            const shopSunGeom = new THREE.SphereGeometry(2, 32, 32);
+            const shopSunMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
+            const shopSun = new THREE.Mesh(shopSunGeom, shopSunMat);
+            const shopSunPos = new THREE.Vector3(8, 4, 8);
+            shopSun.position.copy(shopSunPos);
+            shopScene.add(shopSun);
+            shopDecorativeObjects.push({ mesh: shopSun, rotationSpeed: 0.001 });
+
+            if (shopLight) {
+                shopLight.position.copy(shopSunPos);
+                shopLight.intensity = 1.5;
+            }
+
             // Small Earth for Shop
             const earthGeom = new THREE.SphereGeometry(1.5, 32, 32);
             const earthMat = new THREE.ShaderMaterial({
                 uniforms: {
                     dayTexture: { value: planetTextures.earthDay },
                     nightTexture: { value: planetTextures.earthNight },
-                    sunDirection: { value: new THREE.Vector3(1, 0.2, 1).normalize() }
+                    sunDirection: { value: shopSunPos.clone().normalize() }
                 },
                 vertexShader: `
                     uniform vec3 sunDirection;
