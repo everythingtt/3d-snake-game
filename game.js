@@ -2218,6 +2218,11 @@ const pointLight = new THREE.PointLight(0xffffff, 1, 100);
 pointLight.position.set(10, 10, 10);
 scene.add(pointLight);
 
+// Directional light for Sun (Deep Space only)
+const sunLight = new THREE.DirectionalLight(0xffffff, 0);
+scene.add(sunLight);
+scene.add(sunLight.target); // Need to add target to scene to move it independently if needed
+
 // Ground Plane
  const groundGeometry = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE);
  groundGeometry.computeBoundingBox(); // Ensure geometry is calculated correctly
@@ -2277,6 +2282,9 @@ function updateBackground() {
     // Default light position
     pointLight.position.set(10, 10, 10);
     pointLight.distance = 100;
+    
+    // Default sun light state
+    sunLight.intensity = 0;
 
     gridHelper.material.color.set(bg.grid);
     gridHelper.material.opacity = bg.gridOpacity !== undefined ? bg.gridOpacity : 1.0;
@@ -2324,19 +2332,22 @@ function updateBackground() {
     switch (bg.envType) {
         case 'planets': {
             // Add a Sun
-            const sunGeom = new THREE.SphereGeometry(15, 32, 32);
+            const sunGeom = new THREE.SphereGeometry(25, 32, 32);
             const sunMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
             const sun = new THREE.Mesh(sunGeom, sunMat);
-            // Position sun far away to act as a distant light source
-            const sunPos = new THREE.Vector3(150, 50, 150);
+            // Position sun in front of the starting camera to be clearly visible
+            const sunPos = new THREE.Vector3(0, 80, -250);
             sun.position.copy(sunPos);
             scene.add(sun);
             decorativeObjects.push({ mesh: sun, rotationSpeed: 0.0005 });
 
-            // Update light source to come from the Sun
-            pointLight.position.copy(sunPos);
-            pointLight.distance = 500; // Increase range for the sun
-            pointLight.intensity = 2.0; // Make sun bright
+            // Update sun directional light source
+            sunLight.position.copy(sunPos);
+            sunLight.target.position.set(0, 0, 0);
+            sunLight.intensity = 2.0; 
+
+            // Dim the point light in space to let the Sun dominate
+            pointLight.intensity = 0.5;
 
             if (isLowPerformance) {
                 // Simplified planets for performance
@@ -2815,7 +2826,7 @@ function endGame(reason = null) {
 }
 
 // Shop Logic
-let shopScene, shopCamera, shopRenderer, shopSnake, shopGrid, shopStars, shopLight;
+let shopScene, shopCamera, shopRenderer, shopSnake, shopGrid, shopStars, shopLight, shopSunLight;
 let shopDecorativeObjects = [];
 let shopCurrentBgId = null;
 
@@ -2832,6 +2843,11 @@ function initShopPreview() {
     shopLight = new THREE.PointLight(0xffffff, 1, 100);
     shopLight.position.set(5, 5, 5);
     shopScene.add(shopLight);
+
+    shopSunLight = new THREE.DirectionalLight(0xffffff, 0);
+    shopScene.add(shopSunLight);
+    shopScene.add(shopSunLight.target);
+
     shopScene.add(new THREE.AmbientLight(0x404040));
     shopCamera.position.set(0, 2, 5);
     shopCamera.lookAt(0, 0, 0);
@@ -2961,6 +2977,10 @@ function updateShopPreviewBg() {
         shopLight.intensity = 1.0;
     }
 
+    if (shopSunLight) {
+        shopSunLight.intensity = 0;
+    }
+
     // Update shop grid
     if (shopGrid) shopScene.remove(shopGrid);
     shopGrid = new THREE.GridHelper(10, 10, bg.grid, bg.grid);
@@ -2991,17 +3011,22 @@ function updateShopPreviewBg() {
     switch (bg.envType) {
         case 'planets': {
             // Add a small Sun for Shop
-            const shopSunGeom = new THREE.SphereGeometry(2, 32, 32);
+            const shopSunGeom = new THREE.SphereGeometry(2.5, 32, 32);
             const shopSunMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
             const shopSun = new THREE.Mesh(shopSunGeom, shopSunMat);
-            const shopSunPos = new THREE.Vector3(8, 4, 8);
+            const shopSunPos = new THREE.Vector3(10, 5, -15);
             shopSun.position.copy(shopSunPos);
             shopScene.add(shopSun);
             shopDecorativeObjects.push({ mesh: shopSun, rotationSpeed: 0.001 });
 
+            if (shopSunLight) {
+                shopSunLight.position.copy(shopSunPos);
+                shopSunLight.target.position.set(0, 0, 0);
+                shopSunLight.intensity = 1.5;
+            }
+            
             if (shopLight) {
-                shopLight.position.copy(shopSunPos);
-                shopLight.intensity = 1.5;
+                shopLight.intensity = 0.5;
             }
 
             // Small Earth for Shop
