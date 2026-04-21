@@ -3289,6 +3289,18 @@ const Consent = {
         
         document.getElementById('consent-overlay').style.display = 'none';
         
+        // Unlock menu buttons
+        const startBtn = document.getElementById('start-btn');
+        if (startBtn) {
+            startBtn.disabled = false;
+            startBtn.title = "";
+        }
+        const shopBtn = document.getElementById('shop-btn');
+        if (shopBtn) {
+            shopBtn.disabled = false;
+            shopBtn.title = "";
+        }
+        
         // Clear cached language for fresh detection
         Security.save('snake3d_lang_cache', null);
         detectLanguage();
@@ -3305,4 +3317,16 @@ document.getElementById('accept-consent-btn').onclick = () => {
 if (Consent.check()) {
     detectLanguage();
     ModManager.loadMods();
+} else {
+    // Lock start button if consent is not verified
+    const startBtn = document.getElementById('start-btn');
+    if (startBtn) {
+        startBtn.disabled = true;
+        startBtn.title = "Please accept Terms of Service first";
+    }
+    const shopBtn = document.getElementById('shop-btn');
+    if (shopBtn) {
+        shopBtn.disabled = true;
+        shopBtn.title = "Please accept Terms of Service first";
+    }
 }
