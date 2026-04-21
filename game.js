@@ -139,8 +139,46 @@ function setLanguage(lang) {
 }
 
 async function detectLanguage() {
-    // REMOVED: IP-based geolocation removed to ensure maximum user privacy and zero unauthorized tracking risk.
-    // The game now relies strictly on manual user selection.
+    // 1. Check for cached language first to avoid redundant lookups
+    const cachedLang = Security.load('snake3d_lang_cache', null);
+    if (cachedLang) {
+        setLanguage(cachedLang);
+        return;
+    }
+
+    // 2. Check for explicit geolocation consent (opt-in)
+    const geoConsented = Security.load('snake3d_geo_consented', false);
+    
+    if (geoConsented) {
+        try {
+            // Perform a one-time IP lookup for language selection
+            const response = await fetch('https://ipapi.co/json/');
+            const data = await response.json();
+            const countryCode = data.country_code;
+            
+            let detectedLang = 'en';
+            if (['CN', 'TW', 'HK'].includes(countryCode)) detectedLang = 'zh';
+            else if (['SA', 'AE', 'EG', 'JO', 'LB', 'MA', 'QA'].includes(countryCode)) detectedLang = 'ar';
+            
+            // Cache the result to prevent further tracking
+            Security.save('snake3d_lang_cache', detectedLang);
+            setLanguage(detectedLang);
+            return;
+        } catch (e) {
+            console.warn("GeoIP lookup failed, falling back to browser settings.", e);
+        }
+    }
+
+    // 3. Fallback to navigator.language (Privacy-friendly, no IP tracking)
+    const browserLang = navigator.language || navigator.userLanguage;
+    if (browserLang) {
+        const shortLang = browserLang.split('-')[0];
+        if (TRANSLATIONS[shortLang]) {
+            setLanguage(shortLang);
+            return;
+        }
+    }
+    
     setLanguage('en');
 }
 
@@ -1958,10 +1996,16 @@ const Consent = {
         return true;
     },
     accept() {
+        const geoCheckbox = document.getElementById('geo-consent-checkbox');
+        const geoConsented = geoCheckbox ? geoCheckbox.checked : false;
+        
         Security.save('snake3d_consented', true);
+        Security.save('snake3d_geo_consented', geoConsented);
+        
         document.getElementById('consent-overlay').style.display = 'none';
         
-        setLanguage('en');
+        // Now that we have consent (or not), detect language
+        detectLanguage();
         
         // Load mods after consent
         ModManager.loadMods();
@@ -1975,6 +2019,6 @@ document.getElementById('accept-consent-btn').onclick = () => {
 
 // Initialize
 if (Consent.check()) {
-    setLanguage('en');
+    detectLanguage();
     ModManager.loadMods();
 }

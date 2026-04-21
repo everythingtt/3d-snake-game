@@ -250,69 +250,78 @@ body {
     line-height: 1.4;
 }
 
+/* Consent Modal Styles */
 #consent-overlay {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.95);
+    background: rgba(0, 0, 0, 0.95);
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 500;
+    z-index: 2000;
 }
 
 #consent-modal {
-    width: 90%;
-    max-width: 500px;
-    background: #111;
-    padding: 2rem;
+    background: #222;
+    padding: 2.5rem;
     border-radius: 15px;
     border: 2px solid #00ff00;
+    max-width: 500px;
     text-align: center;
+    box-shadow: 0 0 30px rgba(0, 255, 0, 0.2);
 }
 
-#consent-modal h2 {
-    color: #00ff00;
-    margin-top: 0;
+.consent-options {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    text-align: left;
 }
 
-#consent-modal p {
+.consent-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
     font-size: 0.95rem;
-    line-height: 1.5;
-    color: #ccc;
+    color: #eee;
+    user-select: none;
+}
+
+.consent-checkbox input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #00ff00;
+}
+
+.small-text-muted {
+    font-size: 0.75rem;
+    color: #888;
+    margin-top: 8px;
+    margin-bottom: 0;
+    line-height: 1.3;
 }
 
 .small-text {
-    font-size: 0.8rem !important;
-    color: #888 !important;
+    font-size: 0.8rem;
+    color: #aaa;
     margin-top: 1rem;
 }
 
-#consent-modal a {
-    color: #00ffff;
+.small-text a {
+    color: #00ff00;
     text-decoration: none;
 }
 
-#consent-modal a:hover {
+.small-text a:hover {
     text-decoration: underline;
 }
 
-.legal-footer {
-    margin-top: 1.5rem;
-    font-size: 0.8rem;
-    color: #666;
-}
-
-.legal-footer a {
-    color: #888;
-    text-decoration: none;
-}
-
-.legal-footer a:hover {
-    color: #fff;
-}
 
 .mod-item {
     background: #222;

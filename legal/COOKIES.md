@@ -9,7 +9,8 @@ Cookies and Local Storage are small text files stored on your device by your web
 We do **not** use traditional tracking cookies. However, we use **Local Storage** to:
 - Save your game progress (High Scores, Coins).
 - Remember your selected Skin and Background.
-- Store your language preference.
+- Store your language preference and geolocation consent.
+- Cache the detected language to avoid repeated IP lookups.
 - Record your consent to our Terms and Privacy Policy.
 
 ## 3. Managing Your Data

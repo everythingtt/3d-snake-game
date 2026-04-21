@@ -81,7 +81,17 @@
         <div id="consent-modal">
             <h2>Welcome to Space Journey</h2>
             <p>To provide the best experience, we use browser local storage to save your progress and preferences. <strong>This data stays entirely on your device and is never sent to a server.</strong></p>
-            <p>We do not track your IP address, use cookies, or collect any personal information.</p>
+            <p>We do not track your IP address unless you opt-in for automatic language detection below.</p>
+            
+            <div class="consent-options">
+                <label class="consent-checkbox">
+                    <input type="checkbox" id="geo-consent-checkbox">
+                    <span class="checkmark"></span>
+                    Enable automatic language detection (IP-based)
+                </label>
+                <p class="small-text-muted">If enabled, we will perform a one-time IP address lookup to set your preferred language. We do not store your IP address.</p>
+            </div>
+
             <p class="small-text">By clicking "Accept & Play", you agree to our <a href="legal/TERMS.md" target="_blank">Terms of Service</a> and <a href="legal/PRIVACY.md" target="_blank">Privacy Policy</a>.</p>
             <div class="menu-buttons">
                 <button id="accept-consent-btn">Accept & Play</button>

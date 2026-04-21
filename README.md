@@ -8,7 +8,7 @@ The 3D Snake Game features a customization system that allows for static visual 
 
 ### Safety & Security
 - **No Script Execution**: The customization system is designed to load only static data (colors, textures, 3D models). No executable code or scripts are loaded from theme folders.
-- **Privacy First**: This project does not track IP addresses, use cookies, or collect any user data. All game progress is stored locally in your browser.
+- **Privacy First**: This project does not track IP addresses by default. We only perform a one-time IP lookup for language localization if you explicitly **opt-in** during the initial consent process. We do not use cookies or collect any other user data. All game progress is stored locally in your browser.
 - **Ethics**: We strictly prohibit any themes containing illegal, NSFW, or CASM content. Please refer to our [Content Guidelines](legal/MODDING_GUIDELINES.md).
 
 ### Creating Custom Themes
