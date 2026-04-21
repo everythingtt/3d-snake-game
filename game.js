@@ -44,7 +44,8 @@ const TRANSLATIONS = {
         settings: "Settings",
         music_volume: "Music Volume",
         sfx_volume: "Sound Effects",
-        free_camera: "Free Camera Mode"
+        free_camera: "Free Camera Mode",
+        game_won: "VICTORY! You have conquered the galaxy!"
     },
     ar: {
         game_title: "لعبة الثعبان ثلاثية الأبعاد",
@@ -2778,6 +2779,11 @@ function update() {
     scene.add(newHeadMesh);
     if (snake.length > 1) snake[0].mesh.material = materials.body;
     snake.unshift({ pos: newHeadPos, mesh: newHeadMesh });
+
+    // Victory check: Fill the entire grid
+    if (snake.length >= GRID_SIZE * GRID_SIZE) {
+        endGame('game_won');
+    }
 }
 
 function updateUI() {
@@ -2793,7 +2799,15 @@ function updateUI() {
 
 function endGame(reason = null) {
     gameOver = true;
-    audioManager.playGameOverSound();
+    
+    if (reason === 'game_won') {
+        audioManager.playCoinSound();
+        setTimeout(() => audioManager.playCoinSound(), 200);
+        setTimeout(() => audioManager.playCoinSound(), 400);
+        coins += 500; // Major victory reward
+    } else {
+        audioManager.playGameOverSound();
+    }
     
     if (reason) {
         // Map common error keys if they are passed
