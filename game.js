@@ -842,7 +842,11 @@ function setLanguage(lang) {
     if (!TRANSLATIONS[lang]) lang = 'en';
     currentLang = lang;
     document.documentElement.lang = lang;
-    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.dir = ['ar', 'fa'].includes(lang) ? 'rtl' : 'ltr';
+    
+    // Persist manual selection to cache to be resilient to refreshes
+    Security.save('snake3d_lang_cache', lang);
+    Security.setCookie('snake3d_lang_cache', lang, 365); // Mirror to cookie for cache-clearing resilience
     
     // Update select element if it exists
     const select = document.getElementById('lang-select');
@@ -865,66 +869,69 @@ function setLanguage(lang) {
 }
 
 async function detectLanguage() {
-    // 1. Check for cached language first to avoid redundant lookups
-    const cachedLang = Security.load('snake3d_lang_cache', null);
-    if (cachedLang) {
+    // 1. Check for cached language first (resilient to refresh/clear)
+    let cachedLang = Security.load('snake3d_lang_cache', null);
+    
+    // Fallback to cookie if localStorage was cleared
+    if (!cachedLang) {
+        cachedLang = Security.getCookie('snake3d_lang_cache');
+    }
+
+    if (cachedLang && TRANSLATIONS[cachedLang]) {
         setLanguage(cachedLang);
         return;
     }
 
-    // 2. Check for explicit geolocation consent (opt-in)
+    // 2. Check for explicit geolocation consent
     const geoConsented = Security.load('snake3d_geo_consented', false);
     
     if (geoConsented) {
-        try {
-            // Perform a one-time IP lookup for language selection
-            const response = await fetch('https://ipapi.co/json/');
-            const data = await response.json();
-            const countryCode = data.country_code;
-            
-            let detectedLang = 'en';
-            if (['CN', 'TW', 'HK'].includes(countryCode)) detectedLang = 'zh';
-            else if (['SA', 'AE', 'EG', 'JO', 'LB', 'MA', 'QA'].includes(countryCode)) detectedLang = 'ar';
-            else if (countryCode === 'FR') detectedLang = 'fr';
-            else if (countryCode === 'MX') detectedLang = 'es';
-            else if (countryCode === 'ES') detectedLang = 'es';
-            else if (countryCode === 'IT') detectedLang = 'it';
-            else if (countryCode === 'TR') detectedLang = 'tr';
-            else if (countryCode === 'IR') detectedLang = 'fa';
-            else if (countryCode === 'BR') detectedLang = 'pt';
-            else if (countryCode === 'RU') detectedLang = 'ru';
-            else if (countryCode === 'IN') detectedLang = 'hi';
-            else if (countryCode === 'DE') detectedLang = 'de';
-            else if (countryCode === 'KR') detectedLang = 'ko';
-            else if (countryCode === 'JP') detectedLang = 'ja';
-            else if (countryCode === 'MN') detectedLang = 'mn';
-            else if (countryCode === 'UA') detectedLang = 'uk';
-            else if (countryCode === 'ET') detectedLang = 'am';
-            else if (countryCode === 'AR') detectedLang = 'es-AR';
-            else if (countryCode === 'CU') detectedLang = 'es-CU';
-            else if (countryCode === 'VN') detectedLang = 'vi';
-            else if (countryCode === 'TH') detectedLang = 'th';
-            else if (countryCode === 'ID') detectedLang = 'id';
-            else if (countryCode === 'PK') detectedLang = 'ur';
-            else if (countryCode === 'BD') detectedLang = 'bn';
-            
-            // Cache the result to prevent further tracking
-            Security.save('snake3d_lang_cache', detectedLang);
-            setLanguage(detectedLang);
-            return;
-        } catch (e) {
-            console.warn("GeoIP lookup failed, falling back to browser settings.", e);
+        // Resilience: Try multiple providers in case one is blocked or down
+        const providers = [
+            { url: 'https://ipapi.co/json/', key: 'country_code' },
+            { url: 'https://ip-api.com/json/', key: 'countryCode' }
+        ];
+
+        for (const provider of providers) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout for resilience
+
+                const response = await fetch(provider.url, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
+                const data = await response.json();
+                const countryCode = data[provider.key];
+                
+                if (countryCode) {
+                    const mapping = {
+                        'FR': 'fr', 'MX': 'es', 'ES': 'es', 'IT': 'it', 'TR': 'tr', 'IR': 'fa',
+                        'BR': 'pt', 'RU': 'ru', 'IN': 'hi', 'DE': 'de', 'KR': 'ko', 'JP': 'ja',
+                        'MN': 'mn', 'UA': 'uk', 'ET': 'am', 'AR': 'es-AR', 'CU': 'es-CU',
+                        'VN': 'vi', 'TH': 'th', 'ID': 'id', 'PK': 'ur', 'BD': 'bn'
+                    };
+
+                    let detectedLang = mapping[countryCode] || 'en';
+                    
+                    // Special case for Chinese/Arabic regions
+                    if (['CN', 'TW', 'HK'].includes(countryCode)) detectedLang = 'zh';
+                    else if (['SA', 'AE', 'EG', 'JO', 'LB', 'MA', 'QA'].includes(countryCode)) detectedLang = 'ar';
+
+                    setLanguage(detectedLang); // setLanguage also handles the caching
+                    return;
+                }
+            } catch (e) {
+                console.warn(`GeoIP provider ${provider.url} failed:`, e.message);
+                continue; // Try next provider
+            }
         }
     }
 
     // 3. Fallback to navigator.language (Privacy-friendly, no IP tracking)
-    const browserLang = navigator.language || navigator.userLanguage;
-    if (browserLang) {
-        const shortLang = browserLang.split('-')[0];
-        if (TRANSLATIONS[shortLang]) {
-            setLanguage(shortLang);
-            return;
-        }
+    const browserLang = (navigator.language || navigator.userLanguage || 'en').split('-')[0];
+    if (TRANSLATIONS[browserLang]) {
+        setLanguage(browserLang);
+        return;
     }
     
     setLanguage('en');
@@ -1232,6 +1239,23 @@ const ModManager = {
 // Anti-cheat / Security Manager
 const Security = {
     _key: 'snake_secret_salt',
+    // Cookie helpers for resilience to localStorage clearing
+    setCookie(name, value, days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        const expires = "; expires=" + date.toUTCString();
+        document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Lax";
+    },
+    getCookie(name) {
+        const nameEQ = name + "=";
+        const ca = document.cookie.split(';');
+        for (let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    },
     obfuscate(value) {
         const str = String(value);
         let result = '';
@@ -1253,15 +1277,41 @@ const Security = {
     },
     save(key, value) {
         localStorage.setItem(key, this.obfuscate(value));
+        
+        // Resilience: Sync critical flags to cookies
+        if (key === 'snake3d_consented' || key === 'snake3d_geo_consented' || key === 'snake3d_consent_version') {
+            this.setCookie(key, value, 365);
+        }
     },
     load(key, defaultValue) {
         const data = localStorage.getItem(key);
-        const val = this.deobfuscate(data);
-        return val !== null ? (isNaN(val) ? (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{')) ? val : val) : parseInt(val)) : defaultValue;
+        let val = this.deobfuscate(data);
+        
+        // Resilience: Fallback to cookies if localStorage is cleared
+        if (val === null && (key === 'snake3d_consented' || key === 'snake3d_geo_consented' || key === 'snake3d_consent_version')) {
+            const cookieVal = this.getCookie(key);
+            if (cookieVal !== null) {
+                val = cookieVal;
+                // Sync back to localStorage
+                localStorage.setItem(key, this.obfuscate(val));
+            }
+        }
+
+        if (val === null) return defaultValue;
+
+        // Type conversion logic
+        if (typeof defaultValue === 'number') return parseFloat(val);
+        if (typeof defaultValue === 'boolean') return val === 'true';
+        return val;
     },
     resetData() {
         if (confirm("DANGER: This will permanently delete all your game progress, coins, and settings. Are you sure?")) {
             localStorage.clear();
+            // Also clear resilience cookies
+            this.setCookie('snake3d_consented', '', -1);
+            this.setCookie('snake3d_geo_consented', '', -1);
+            this.setCookie('snake3d_consent_version', '', -1);
+            this.setCookie('snake3d_lang_cache', '', -1);
             location.reload();
         }
     },
