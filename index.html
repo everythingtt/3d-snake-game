@@ -199,6 +199,16 @@
                 <p class="small-text-muted">Disable trailing camera for manual control.</p>
             </div>
 
+            <div class="setting-item">
+                <label data-t="key_config">Key Configuration</label>
+                <div id="key-config-list" class="key-config-grid">
+                    <div class="key-item"><span>Up</span><button class="key-bind-btn" data-action="up">↑</button></div>
+                    <div class="key-item"><span>Down</span><button class="key-bind-btn" data-action="down">↓</button></div>
+                    <div class="key-item"><span>Left</span><button class="key-bind-btn" data-action="left">←</button></div>
+                    <div class="key-item"><span>Right</span><button class="key-bind-btn" data-action="right">→</button></div>
+                </div>
+            </div>
+
             <div class="menu-buttons">
                 <button id="close-settings-btn" data-t="back_to_menu">Back to Menu</button>
             </div>
@@ -206,6 +216,7 @@
     </div>
 
     <div id="game-container"></div>
+    <div id="camera-swipe-area" style="display: none;"></div>
     <div id="notification-container"></div>
     <div id="glitch-overlay" style="display: none;"></div>
     <script type="module" src="game.js?v=1.0.1"></script>

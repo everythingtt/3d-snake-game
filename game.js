@@ -1826,11 +1826,18 @@ let isPaused = false;
 let isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 let isLowPerformance = false;
 let isFreeCamera = Security.load('snake3d_free_cam', false);
+let keyBinds = JSON.parse(Security.load('snake3d_keybinds', '{"up":"ArrowUp","down":"ArrowDown","left":"ArrowLeft","right":"ArrowRight"}'));
 let keysPressed = {};
 let particles = [];
 let decorativeObjects = [];
 let cheaterDetected = false;
 let starfield = null;
+
+// Mobile Swipe state
+let touchStartX = 0;
+let touchStartY = 0;
+let touchMoved = false;
+let swipeCameraVelocity = new THREE.Vector2(0, 0);
 
 // Audio setup
 class AudioManager {
@@ -3225,7 +3232,39 @@ document.getElementById('settings-btn').onclick = () => {
     document.getElementById('music-volume-slider').value = audioManager.musicVolume;
     document.getElementById('sfx-volume-slider').value = audioManager.sfxVolume;
     document.getElementById('free-cam-checkbox').checked = isFreeCamera;
+    
+    // Sync keybinds UI
+    document.querySelectorAll('.key-bind-btn').forEach(btn => {
+        const action = btn.getAttribute('data-action');
+        btn.innerText = keyBinds[action];
+    });
 };
+
+// Key Rebinding Logic
+let rebindingAction = null;
+document.querySelectorAll('.key-bind-btn').forEach(btn => {
+    btn.onclick = (e) => {
+        audioManager.playUiClick();
+        if (rebindingAction) return; // Already waiting
+        
+        rebindingAction = btn.getAttribute('data-action');
+        btn.classList.add('waiting');
+        btn.innerText = '...';
+        
+        const onBindKey = (event) => {
+            event.preventDefault();
+            const newKey = event.key;
+            keyBinds[rebindingAction] = newKey;
+            btn.innerText = newKey;
+            btn.classList.remove('waiting');
+            Security.save('snake3d_keybinds', JSON.stringify(keyBinds));
+            rebindingAction = null;
+            window.removeEventListener('keydown', onBindKey);
+        };
+        
+        window.addEventListener('keydown', onBindKey);
+    };
+});
 
 document.getElementById('close-settings-btn').onclick = () => {
     audioManager.playUiClick();
@@ -3247,10 +3286,47 @@ document.getElementById('free-cam-checkbox').onchange = (e) => {
     
     if (isFreeCamera) {
         controls.enableRotate = true;
+        if (isTouchDevice) {
+            document.getElementById('camera-swipe-area').style.display = 'block';
+            document.getElementById('touch-controls').style.display = 'none';
+        }
     } else if (isTouchDevice) {
         controls.enableRotate = false;
+        document.getElementById('camera-swipe-area').style.display = 'none';
+        document.getElementById('touch-controls').style.display = 'flex';
     }
 };
+
+// Swipe Area Event Listeners for Mobile Free Camera
+const swipeArea = document.getElementById('camera-swipe-area');
+swipeArea.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchMoved = false;
+}, { passive: true });
+
+swipeArea.addEventListener('touchmove', (e) => {
+    if (!isFreeCamera) return;
+    
+    const touchX = e.touches[0].clientX;
+    const touchY = e.touches[0].clientY;
+    
+    const deltaX = touchX - touchStartX;
+    const deltaY = touchY - touchStartY;
+    
+    // Convert swipe delta to camera velocity
+    // Sensitivity factor
+    const sensitivity = 0.005;
+    swipeCameraVelocity.set(deltaX * sensitivity, deltaY * sensitivity);
+    
+    touchMoved = true;
+    // We don't update touchStartX/Y here to keep it relative to start for continuous movement
+}, { passive: true });
+
+swipeArea.addEventListener('touchend', () => {
+    swipeCameraVelocity.set(0, 0);
+    touchMoved = false;
+}, { passive: true });
 
 document.getElementById('lang-select').onchange = (e) => {
     setLanguage(e.target.value);
@@ -3266,6 +3342,8 @@ function onKeyDown(event) {
     keysPressed[event.key.toLowerCase()] = true;
 
     // Global shortcuts (available even if game not started, but some only make sense then)
+    if (rebindingAction) return; // Don't trigger shortcuts while rebinding
+
     if (event.key.toLowerCase() === 's' || event.key.toLowerCase() === 'b') {
         const shopOverlay = document.getElementById('shop-overlay');
         if (shopOverlay.style.display === 'flex') {
@@ -3320,6 +3398,13 @@ function onKeyDown(event) {
     
     if (isPaused) return;
     
+    // Check keybinds
+    if (event.key === keyBinds.up) { if (direction.z === 0) nextDirection.set(0, 0, -1); }
+    else if (event.key === keyBinds.down) { if (direction.z === 0) nextDirection.set(0, 0, 1); }
+    else if (event.key === keyBinds.left) { if (direction.x === 0) nextDirection.set(-1, 0, 0); }
+    else if (event.key === keyBinds.right) { if (direction.x === 0) nextDirection.set(1, 0, 0); }
+    
+    // Fallback switch for Arrow Keys (always work as defaults)
     switch (event.key) {
         case 'ArrowUp': if (direction.z === 0) nextDirection.set(0, 0, -1); break;
         case 'ArrowDown': if (direction.z === 0) nextDirection.set(0, 0, 1); break;
@@ -3363,6 +3448,14 @@ function animate() {
          controls.target.addScaledVector(forward, (keysPressed['w'] ? moveSpeed : 0) + (keysPressed['s'] ? -moveSpeed : 0));
          controls.target.addScaledVector(right, (keysPressed['a'] ? -moveSpeed : 0) + (keysPressed['d'] ? moveSpeed : 0));
          controls.target.y += (keysPressed['q'] ? moveSpeed : 0) + (keysPressed['e'] ? -moveSpeed : 0);
+
+         // Apply swipe movement for mobile free camera
+         if (isTouchDevice && touchMoved) {
+             camera.position.addScaledVector(forward, -swipeCameraVelocity.y * 10);
+             camera.position.addScaledVector(right, swipeCameraVelocity.x * 10);
+             controls.target.addScaledVector(forward, -swipeCameraVelocity.y * 10);
+             controls.target.addScaledVector(right, swipeCameraVelocity.x * 10);
+         }
      } else if (snake.length > 0) {
          const headPos = snake[0].pos;
          if (isTouchDevice) {
