@@ -2322,7 +2322,7 @@ function updateBackground() {
 
     // Create new decorative objects based on environment
     switch (bg.envType) {
-        case 'planets':
+        case 'planets': {
             // Add a Sun
             const sunGeom = new THREE.SphereGeometry(15, 32, 32);
             const sunMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
@@ -2417,7 +2417,8 @@ function updateBackground() {
                 decorativeObjects.push({ mesh, rotationSpeed: Math.random() * 0.01 });
             }
             break;
-        case 'cubes':
+        }
+        case 'cubes': {
             const cubeCount = isLowPerformance ? 5 : 20;
             for (let i = 0; i < cubeCount; i++) {
                 const geometry = new THREE.BoxGeometry(2, 2, 2);
@@ -2432,7 +2433,8 @@ function updateBackground() {
                 decorativeObjects.push({ mesh, rotationSpeed: Math.random() * 0.02 });
             }
             break;
-        case 'sun':
+        }
+        case 'sun': {
             const sunGeom = new THREE.SphereGeometry(10, 32, 32);
             const sunMat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
             const sunMesh = new THREE.Mesh(sunGeom, sunMat);
@@ -2440,7 +2442,8 @@ function updateBackground() {
             scene.add(sunMesh);
             decorativeObjects.push({ mesh: sunMesh, rotationSpeed: 0.001 });
             break;
-        case 'code':
+        }
+        case 'code': {
             for (let i = 0; i < 50; i++) {
                 const geometry = new THREE.PlaneGeometry(0.5, 5);
                 const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.5 });
@@ -2454,7 +2457,8 @@ function updateBackground() {
                 decorativeObjects.push({ mesh, speed: Math.random() * 0.5 + 0.1 });
             }
             break;
-        case 'lava':
+        }
+        case 'lava': {
             for (let i = 0; i < 15; i++) {
                 const geometry = new THREE.SphereGeometry(Math.random() * 3 + 1, 8, 8);
                 const material = new THREE.MeshPhongMaterial({ color: 0xff4400, emissive: 0x441100 });
@@ -2468,7 +2472,8 @@ function updateBackground() {
                 decorativeObjects.push({ mesh, floatSpeed: Math.random() * 0.05 + 0.02, initialY: -10 });
             }
             break;
-        case 'blackhole':
+        }
+        case 'blackhole': {
             // Singularity
             const singularity = new THREE.Mesh(
                 new THREE.SphereGeometry(15, 32, 32),
@@ -2497,7 +2502,7 @@ function updateBackground() {
             const glowMat = new THREE.MeshBasicMaterial({ 
                 color: 0x4400ff, 
                 transparent: true, 
-                opacity: 0.2,
+                opacity: 0.2, 
                 side: THREE.BackSide 
             });
             const glow = new THREE.Mesh(glowGeom, glowMat);
@@ -2505,7 +2510,8 @@ function updateBackground() {
             scene.add(glow);
             decorativeObjects.push({ mesh: glow, rotationSpeed: -0.01 });
             break;
-        case 'custom':
+        }
+        case 'custom': {
             const modAssets = ModManager.assets.get(currentBgId);
             if (modAssets?.customModel) {
                 // Apply texture to model if specified
@@ -2550,6 +2556,7 @@ function updateBackground() {
                 decorativeObjects.push({ mesh: mysteryMesh, rotationSpeed: 0.01 });
             }
             break;
+        }
     }
 }
 updateBackground();
@@ -2982,7 +2989,7 @@ function updateShopPreviewBg() {
     shopDecorativeObjects = [];
 
     switch (bg.envType) {
-        case 'planets':
+        case 'planets': {
             // Add a small Sun for Shop
             const shopSunGeom = new THREE.SphereGeometry(2, 32, 32);
             const shopSunMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
@@ -3046,7 +3053,8 @@ function updateShopPreviewBg() {
             shopScene.add(venus);
             shopDecorativeObjects.push({ mesh: venus, rotationSpeed: 0.005 });
             break;
-        case 'cubes':
+        }
+        case 'cubes': {
             for (let i = 0; i < 10; i++) {
                 const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
                 const mesh = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial({ color: 0x00ffff, wireframe: true }));
@@ -3055,13 +3063,15 @@ function updateShopPreviewBg() {
                 shopDecorativeObjects.push({ mesh, rotationSpeed: 0.03 });
             }
             break;
-        case 'sun':
+        }
+        case 'sun': {
             const sunMesh = new THREE.Mesh(new THREE.SphereGeometry(2, 16, 16), new THREE.MeshBasicMaterial({ color: 0xff00ff }));
             sunMesh.position.set(0, 0, -10);
             shopScene.add(sunMesh);
             shopDecorativeObjects.push({ mesh: sunMesh, rotationSpeed: 0.01 });
             break;
-        case 'code':
+        }
+        case 'code': {
             for (let i = 0; i < 20; i++) {
                 const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 1), new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.5 }));
                 mesh.position.set((Math.random() - 0.5) * 10, Math.random() * 10, (Math.random() - 0.5) * 10);
@@ -3069,7 +3079,8 @@ function updateShopPreviewBg() {
                 shopDecorativeObjects.push({ mesh, speed: 0.1 });
             }
             break;
-        case 'lava':
+        }
+        case 'lava': {
             for (let i = 0; i < 10; i++) {
                 const mesh = new THREE.Mesh(new THREE.SphereGeometry(Math.random() * 0.5 + 0.2, 8, 8), new THREE.MeshPhongMaterial({ color: 0xff4400 }));
                 mesh.position.set((Math.random() - 0.5) * 10, -2, (Math.random() - 0.5) * 10);
@@ -3077,7 +3088,8 @@ function updateShopPreviewBg() {
                 shopDecorativeObjects.push({ mesh, floatSpeed: 0.02, initialY: -2 });
             }
             break;
-        case 'blackhole':
+        }
+        case 'blackhole': {
             const shopSingularity = new THREE.Mesh(
                 new THREE.SphereGeometry(2, 32, 32),
                 new THREE.MeshBasicMaterial({ color: 0x000000 })
@@ -3095,7 +3107,8 @@ function updateShopPreviewBg() {
             shopScene.add(shopDisk);
             shopDecorativeObjects.push({ mesh: shopDisk, rotationSpeed: 0.03 });
             break;
-        case 'custom':
+        }
+        case 'custom': {
             const modShopAssets = ModManager.assets.get(shopCurrentBgId || currentBgId);
             if (modShopAssets?.customModel) {
                 // Apply texture to model if specified
@@ -3130,6 +3143,7 @@ function updateShopPreviewBg() {
                 shopDecorativeObjects.push({ mesh: shopMystery, rotationSpeed: 0.02 });
             }
             break;
+        }
     }
 }
 
