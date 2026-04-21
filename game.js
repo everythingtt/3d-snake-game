@@ -40,7 +40,11 @@ const TRANSLATIONS = {
         matrix_void: "Matrix Void",
         hellscape: "Hellscape",
         event_horizon: "Event Horizon",
-        mystery_void: "Mystery Void"
+        mystery_void: "Mystery Void",
+        settings: "Settings",
+        music_volume: "Music Volume",
+        sfx_volume: "Sound Effects",
+        free_camera: "Free Camera Mode"
     },
     ar: {
         game_title: "لعبة الثعبان ثلاثية الأبعاد",
@@ -1821,6 +1825,7 @@ let gameStarted = false;
 let isPaused = false;
 let isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 let isLowPerformance = false;
+let isFreeCamera = Security.load('snake3d_free_cam', false);
 let particles = [];
 let decorativeObjects = [];
 let cheaterDetected = false;
@@ -1831,25 +1836,56 @@ class AudioManager {
     constructor() {
         this.ctx = null;
         this.masterGain = null;
+        this.musicGain = null;
+        this.sfxGain = null;
         this.reverbNode = null;
         this.musicLoopId = null;
         this.currentMusicConfig = null;
         this.externalMusicSource = null;
         this.externalAudioBuffers = new Map();
-        this.isMuted = false;
+        this.isMuted = Security.load('snake3d_muted', false);
+        this.musicVolume = Security.load('snake3d_music_volume', 0.5);
+        this.sfxVolume = Security.load('snake3d_sfx_volume', 0.5);
     }
 
     init() {
         if (this.ctx) return;
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.value = 0.2;
         
-        // Create Reverb
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.value = this.isMuted ? 0 : 1.0;
+        
+        this.musicGain = this.ctx.createGain();
+        this.musicGain.gain.value = this.musicVolume;
+        
+        this.sfxGain = this.ctx.createGain();
+        this.sfxGain.gain.value = this.sfxVolume;
+
+        // Chain: musicGain/sfxGain -> masterGain -> destination
+        this.musicGain.connect(this.masterGain);
+        this.sfxGain.connect(this.masterGain);
+        
+        // Create Reverb (connect sfx/music to reverb as needed)
         this.reverbNode = this.ctx.createConvolver();
-        this.createReverb(1.5, 2.0); // Default reverb
+        this.createReverb(1.5, 2.0); 
         
         this.masterGain.connect(this.ctx.destination);
+    }
+
+    setMusicVolume(value) {
+        this.musicVolume = value;
+        Security.save('snake3d_music_volume', value);
+        if (this.musicGain) {
+            this.musicGain.gain.setTargetAtTime(value, this.ctx.currentTime, 0.1);
+        }
+    }
+
+    setSfxVolume(value) {
+        this.sfxVolume = value;
+        Security.save('snake3d_sfx_volume', value);
+        if (this.sfxGain) {
+            this.sfxGain.gain.setTargetAtTime(value, this.ctx.currentTime, 0.1);
+        }
     }
 
     // Procedural Reverb Impulse Response
@@ -1882,11 +1918,11 @@ class AudioManager {
         }
     }
 
-    playExternalSound(url) {
+    playExternalSound(url, isMusic = false) {
         if (!this.ctx || !this.externalAudioBuffers.has(url)) return false;
         const source = this.ctx.createBufferSource();
         source.buffer = this.externalAudioBuffers.get(url);
-        source.connect(this.masterGain);
+        source.connect(isMusic ? this.musicGain : this.sfxGain);
         source.start(0);
         return true;
     }
@@ -1940,9 +1976,9 @@ class AudioManager {
         // Route to reverb if requested
         if (options.useReverb) {
             gain.connect(this.reverbNode);
-            this.reverbNode.connect(this.masterGain);
+            this.reverbNode.connect(options.isMusic ? this.musicGain : this.sfxGain);
         } else {
-            gain.connect(this.masterGain);
+            gain.connect(options.isMusic ? this.musicGain : this.sfxGain);
         }
 
         osc.start(time);
@@ -2018,7 +2054,7 @@ class AudioManager {
                 this.externalMusicSource = this.ctx.createBufferSource();
                 this.externalMusicSource.buffer = buffer;
                 this.externalMusicSource.loop = true;
-                this.externalMusicSource.connect(this.masterGain);
+                this.externalMusicSource.connect(this.musicGain);
                 this.externalMusicSource.start(0);
                 return;
             }
@@ -2038,7 +2074,8 @@ class AudioManager {
                     this.playSynth(f, track.type, track.gain, track.filter, config.speed * 0.9, noteTime, {
                         useReverb: true,
                         decay: config.speed * 0.5,
-                        sustain: 0.3
+                        sustain: 0.3,
+                        isMusic: true // Mark as music
                     });
                 });
             });
@@ -2152,6 +2189,7 @@ document.getElementById('game-container').appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 camera.position.set(0, 10, 20);
 camera.lookAt(0, 0, 0);
+controls.enableRotate = isFreeCamera; // Respect initial setting
 controls.update();
 
 // Lights
@@ -3125,9 +3163,11 @@ function renderModList() {
      document.getElementById('right-btn').ontouchstart = (e) => { e.preventDefault(); handleDirection(1, 0, 0); };
      
      // Bird's eye-view for mobile
-     camera.position.set(0, 30, 0);
-     camera.lookAt(0, 0, 0);
-     controls.enableRotate = false; // Disable rotation for better bird's eye experience
+     if (!isFreeCamera) {
+         camera.position.set(0, 30, 0);
+         camera.lookAt(0, 0, 0);
+         controls.enableRotate = false; // Disable rotation for better bird's eye experience
+     }
  }
 
 function handleDirection(x, y, z) {
@@ -3170,9 +3210,45 @@ document.getElementById('start-btn').onclick = () => {
 document.getElementById('mute-btn').onclick = () => {
     audioManager.init();
     audioManager.isMuted = !audioManager.isMuted;
-    audioManager.masterGain.gain.setTargetAtTime(audioManager.isMuted ? 0 : 0.2, audioManager.ctx.currentTime, 0.1);
+    audioManager.masterGain.gain.setTargetAtTime(audioManager.isMuted ? 0 : 1.0, audioManager.ctx.currentTime, 0.1);
+    Security.save('snake3d_muted', audioManager.isMuted);
     document.getElementById('mute-btn').innerText = audioManager.isMuted ? '🔇' : '🔊';
     audioManager.playUiClick();
+};
+
+document.getElementById('settings-btn').onclick = () => {
+    audioManager.playUiClick();
+    document.getElementById('settings-overlay').style.display = 'flex';
+    
+    // Sync UI with current settings
+    document.getElementById('music-volume-slider').value = audioManager.musicVolume;
+    document.getElementById('sfx-volume-slider').value = audioManager.sfxVolume;
+    document.getElementById('free-cam-checkbox').checked = isFreeCamera;
+};
+
+document.getElementById('close-settings-btn').onclick = () => {
+    audioManager.playUiClick();
+    document.getElementById('settings-overlay').style.display = 'none';
+};
+
+document.getElementById('music-volume-slider').oninput = (e) => {
+    audioManager.setMusicVolume(parseFloat(e.target.value));
+};
+
+document.getElementById('sfx-volume-slider').oninput = (e) => {
+    audioManager.setSfxVolume(parseFloat(e.target.value));
+};
+
+document.getElementById('free-cam-checkbox').onchange = (e) => {
+    isFreeCamera = e.target.checked;
+    Security.save('snake3d_free_cam', isFreeCamera);
+    audioManager.playUiClick();
+    
+    if (isFreeCamera) {
+        controls.enableRotate = true;
+    } else if (isTouchDevice) {
+        controls.enableRotate = false;
+    }
 };
 
 document.getElementById('lang-select').onchange = (e) => {
@@ -3206,7 +3282,7 @@ function animate() {
      updateParticles();
      animateDecorativeObjects(decorativeObjects);
      
-     if (snake.length > 0) {
+     if (snake.length > 0 && !isFreeCamera) {
          const headPos = snake[0].pos;
          if (isTouchDevice) {
              // Static bird's eye view for mobile

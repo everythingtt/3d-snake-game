@@ -323,6 +323,48 @@ body {
 }
 
 
+#settings-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2100;
+}
+
+#settings-modal {
+    background: #1a1a1a;
+    padding: 2rem;
+    border-radius: 15px;
+    border: 2px solid #00ff00;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.setting-item {
+    margin: 1.5rem 0;
+    text-align: left;
+}
+
+.setting-item label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #00ff00;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.setting-item input[type="range"] {
+    width: 100%;
+    accent-color: #00ff00;
+    cursor: pointer;
+}
+
 .mod-item {
     background: #222;
     padding: 1rem;
