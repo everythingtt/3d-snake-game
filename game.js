@@ -1850,6 +1850,12 @@ let decorativeObjects = [];
 let cheaterDetected = false;
 let starfield = null;
 
+// 3D Menu state
+let menuScene, menuCamera, menuRenderer, menuButtons = [];
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2();
+let isMainMenuActive = false;
+
 // Mobile Swipe state
 let touchStartX = 0;
 let touchStartY = 0;
@@ -3794,11 +3800,6 @@ document.getElementById('accept-consent-btn').onclick = () => {
     audioManager.playUiClick();
     Consent.accept();
 };
-
-let menuScene, menuCamera, menuRenderer, menuButtons = [];
-let raycaster = new THREE.Raycaster();
-let mouse = new THREE.Vector2();
-let isMainMenuActive = false;
 
 function init3DMenu() {
     isMainMenuActive = true;
