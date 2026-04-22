@@ -3607,7 +3607,7 @@ function onKeyUp(event) {
 
 let isMainMenu = true;
 let menuSnake = null;
-let menuTargetRotation = 0;
+let menuDecorativeGroup = null;
 
 // Main Menu Manager
 const MenuManager = {
@@ -3615,13 +3615,25 @@ const MenuManager = {
         this.setupEventListeners();
         this.createMenuScene();
         this.showMenu();
+        
+        // Ensure game engine overlays are hidden
+        document.getElementById('overlay').style.display = 'none';
+        document.getElementById('shop-overlay').style.display = 'none';
+        document.getElementById('settings-overlay').style.display = 'none';
+        document.getElementById('info').style.visibility = 'hidden';
     },
 
     setupEventListeners() {
         document.getElementById('main-singleplayer-btn').onclick = () => this.startSinglePlayer();
         document.getElementById('main-settings-btn').onclick = () => this.toggleModal('main-settings-modal', true);
         document.getElementById('main-account-btn').onclick = () => this.toggleModal('main-account-modal', true);
-        document.getElementById('main-exit-btn').onclick = () => window.close();
+        document.getElementById('main-exit-btn').onclick = () => {
+            if (confirm("Are you sure you want to exit?")) {
+                window.close();
+                // Fallback for browsers that prevent window.close()
+                setTimeout(() => { window.location.href = "about:blank"; }, 100);
+            }
+        };
         
         document.querySelectorAll('.close-modal-btn').forEach(btn => {
             btn.onclick = (e) => this.toggleModal(e.target.closest('.modal-3d').id, false);
@@ -3651,25 +3663,44 @@ const MenuManager = {
     },
 
     createMenuScene() {
+        menuDecorativeGroup = new THREE.Group();
+        
         // Create a cool snake for the menu
-        const group = new THREE.Group();
+        const snakeGroup = new THREE.Group();
         const colors = [0x00ffff, 0x00cccc, 0x00aaaa, 0x008888, 0x006666];
-        for (let i = 0; i < 15; i++) {
-            const geom = new THREE.BoxGeometry(1, 1, 1);
+        for (let i = 0; i < 20; i++) {
+            const geom = new THREE.BoxGeometry(1.2, 1.2, 1.2);
             const mat = new THREE.MeshPhongMaterial({ 
                 color: colors[i % colors.length],
                 emissive: colors[i % colors.length],
-                emissiveIntensity: 0.5
+                emissiveIntensity: 0.6,
+                transparent: true,
+                opacity: 1 - (i * 0.04)
             });
             const mesh = new THREE.Mesh(geom, mat);
-            mesh.position.set(0, 0, -i * 1.1);
-            group.add(mesh);
+            mesh.position.set(0, 0, -i * 1.3);
+            snakeGroup.add(mesh);
         }
-        menuSnake = group;
-        scene.add(menuSnake);
+        menuSnake = snakeGroup;
+        menuDecorativeGroup.add(menuSnake);
         
-        // Initial menu camera position
-        camera.position.set(-15, 5, 10);
+        // Add some floating rings for extra 3D flair
+        for (let i = 0; i < 3; i++) {
+            const ringGeom = new THREE.TorusGeometry(8 + i * 4, 0.1, 16, 100);
+            const ringMat = new THREE.MeshBasicMaterial({ 
+                color: 0x00ff00, 
+                transparent: true, 
+                opacity: 0.2 
+            });
+            const ring = new THREE.Mesh(ringGeom, ringMat);
+            ring.rotation.x = Math.PI / 2;
+            menuDecorativeGroup.add(ring);
+        }
+
+        scene.add(menuDecorativeGroup);
+        
+        // Distant Cinematic Camera position
+        camera.position.set(-40, 20, 60);
         camera.lookAt(0, 0, 0);
         controls.enabled = false;
         
@@ -3681,6 +3712,8 @@ const MenuManager = {
     showMenu() {
         document.getElementById('main-menu-overlay').style.display = 'flex';
         isMainMenu = true;
+        // Ensure visibility
+        document.getElementById('overlay').style.display = 'none';
     },
 
     toggleModal(id, show) {
@@ -3693,7 +3726,7 @@ const MenuManager = {
         document.getElementById('main-menu-overlay').style.display = 'none';
         
         // Cinematic Transition
-        const duration = 2000;
+        const duration = 2500;
         const startPos = camera.position.clone();
         const endPos = new THREE.Vector3(0, 10, 20);
         const startTime = Date.now();
@@ -3718,9 +3751,10 @@ const MenuManager = {
 
     finishTransition() {
         isMainMenu = false;
-        scene.remove(menuSnake);
+        scene.remove(menuDecorativeGroup);
         controls.enabled = true;
         document.getElementById('overlay').style.display = 'flex';
+        document.getElementById('info').style.visibility = 'visible';
         audioManager.init();
         audioManager.updateMusicTheme(currentBgId);
     }
@@ -3732,8 +3766,17 @@ function animate() {
      if (isMainMenu) {
          // Menu animations
          if (menuSnake) {
-             menuSnake.rotation.y += 0.005;
-             menuSnake.position.y = Math.sin(Date.now() * 0.001) * 2;
+             menuSnake.rotation.y += 0.003;
+             menuSnake.rotation.z += 0.001;
+             menuSnake.position.y = Math.sin(Date.now() * 0.001) * 3;
+         }
+         if (menuDecorativeGroup) {
+             menuDecorativeGroup.children.forEach((child, idx) => {
+                 if (child.geometry.type === 'TorusGeometry') {
+                     child.rotation.z += 0.002 * (idx + 1);
+                     child.rotation.y += 0.001 * (idx + 1);
+                 }
+             });
          }
          animateDecorativeObjects(decorativeObjects);
          renderer.render(scene, camera);
