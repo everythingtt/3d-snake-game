@@ -151,14 +151,16 @@
                 <p>Multiplayer events coming soon!</p>
                 <p class="small">Create an account to track stats and compete globally.</p>
             </div>
-            <div class="input-group">
-                <input type="text" placeholder="Username" id="acc-username">
-                <input type="password" placeholder="Password" id="acc-password">
-            </div>
-            <div class="menu-buttons">
-                <button id="acc-login-btn">LOGIN</button>
-                <button id="acc-create-btn">CREATE</button>
-            </div>
+            <form id="account-form" onsubmit="return false;">
+                <div class="input-group">
+                    <input type="text" placeholder="Username" id="acc-username" autocomplete="username">
+                    <input type="password" placeholder="Password" id="acc-password" autocomplete="current-password">
+                </div>
+                <div class="menu-buttons">
+                    <button type="button" id="acc-login-btn">LOGIN</button>
+                    <button type="button" id="acc-create-btn">CREATE</button>
+                </div>
+            </form>
             <button class="close-modal-btn">BACK</button>
         </div>
     </div>

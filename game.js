@@ -3772,7 +3772,7 @@ function animate() {
          }
          if (menuDecorativeGroup) {
              menuDecorativeGroup.children.forEach((child, idx) => {
-                 if (child.geometry.type === 'TorusGeometry') {
+                 if (child.geometry && child.geometry.type === 'TorusGeometry') {
                      child.rotation.z += 0.002 * (idx + 1);
                      child.rotation.y += 0.001 * (idx + 1);
                  }
