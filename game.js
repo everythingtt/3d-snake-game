@@ -15,10 +15,7 @@ const TRANSLATIONS = {
         controls: "Use Arrow Keys to move",
         score: "Score",
         high: "High",
-        start_game: "Singleplayer",
-        multiplayer: "Multiplayer",
-        account: "Account",
-        exit: "Exit",
+        start_game: "Start Game",
         open_shop: "Open Shop",
         skins: "Skins",
         backgrounds: "Backgrounds",
@@ -48,14 +45,7 @@ const TRANSLATIONS = {
         music_volume: "Music Volume",
         sfx_volume: "Sound Effects",
         free_camera: "Free Camera Mode",
-        game_won: "VICTORY! You have conquered the galaxy!",
-        fullscreen: "Fullscreen",
-        login: "Login",
-        create_account: "Create Account",
-        username: "Username",
-        password: "Password",
-        multiplayer_placeholder: "Multiplayer features coming soon! Stay tuned for future updates.",
-        account_placeholder: "Account features are currently under development. You will be able to save progress across devices and compete in global events soon!"
+        game_won: "VICTORY! You have conquered the galaxy!"
     },
     ar: {
         game_title: "لعبة الثعبان ثلاثية الأبعاد",
@@ -1520,317 +1510,6 @@ const BACKGROUNDS = [
     }
 ];
 
-// 3D UI System
-const UI3D = {
-    createButton(text, width, height, position, callback) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 128;
-        const ctx = canvas.getContext('2d');
-        
-        // Draw button background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = '#00ff00';
-        ctx.lineWidth = 8;
-        ctx.strokeRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw text
-        ctx.fillStyle = '#00ff00';
-        ctx.font = 'bold 64px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(text.toUpperCase(), canvas.width / 2, canvas.height / 2);
-        
-        const texture = new THREE.CanvasTexture(canvas);
-        const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-        const geometry = new THREE.PlaneGeometry(width, height);
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.copy(position);
-        mesh.userData = { callback, isButton: true, originalScale: mesh.scale.clone() };
-        
-        return mesh;
-    },
-
-    createModal(title, contentText, width, height, buttons = []) {
-        const group = new THREE.Group();
-        
-        // Background
-        const bgGeom = new THREE.PlaneGeometry(width, height);
-        const bgMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
-        const bgMesh = new THREE.Mesh(bgGeom, bgMat);
-        group.add(bgMesh);
-        
-        // Border
-        const borderEdges = new THREE.EdgesGeometry(bgGeom);
-        const borderLine = new THREE.LineSegments(borderEdges, new THREE.LineBasicMaterial({ color: 0x00ff00 }));
-        group.add(borderLine);
-        
-        // Title and Content (using canvas)
-        const canvas = document.createElement('canvas');
-        canvas.width = 1024;
-        canvas.height = 1024;
-        const ctx = canvas.getContext('2d');
-        
-        ctx.fillStyle = '#00ff00';
-        ctx.font = 'bold 80px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(title.toUpperCase(), canvas.width / 2, 100);
-        
-        ctx.font = '40px Arial';
-        ctx.fillStyle = '#ffffff';
-        // Wrap text
-        const words = contentText.split(' ');
-        let line = '';
-        let y = 250;
-        for (let n = 0; n < words.length; n++) {
-            let testLine = line + words[n] + ' ';
-            let metrics = ctx.measureText(testLine);
-            let testWidth = metrics.width;
-            if (testWidth > 900 && n > 0) {
-                ctx.fillText(line, canvas.width / 2, y);
-                line = words[n] + ' ';
-                y += 50;
-            } else {
-                line = testLine;
-            }
-        }
-        ctx.fillText(line, canvas.width / 2, y);
-        
-        const texture = new THREE.CanvasTexture(canvas);
-        const textMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-        const textMesh = new THREE.Mesh(new THREE.PlaneGeometry(width * 0.9, height * 0.9), textMat);
-        textMesh.position.z = 0.01;
-        group.add(textMesh);
-        
-        // Add buttons
-        buttons.forEach((btn, index) => {
-            const btnMesh = this.createButton(btn.text, 3, 0.8, new THREE.Vector3(0, -height / 2 + 1 + index * 1, 0.05), btn.callback);
-            group.add(btnMesh);
-            modalObjects.push(btnMesh);
-        });
-        
-        return group;
-    },
-
-    clearMenu() {
-        menuObjects.forEach(obj => scene.remove(obj));
-        menuObjects = [];
-    },
-
-    clearModal() {
-        modalObjects.forEach(obj => {
-            if (obj.parent) obj.parent.remove(obj);
-            else scene.remove(obj);
-        });
-        modalObjects = [];
-        if (this.currentModal) {
-            scene.remove(this.currentModal);
-            this.currentModal = null;
-        }
-    },
-
-    showMainMenu() {
-        this.clearMenu();
-        this.clearModal();
-        currentState = GAME_STATES.MENU;
-        
-        const startY = 4;
-        const gap = 1.2;
-        
-        const buttons = [
-            { text: TRANSLATIONS[currentLang].start_game, callback: () => this.startSinglePlayer() },
-            { text: TRANSLATIONS[currentLang].multiplayer, callback: () => this.showMultiplayerModal() },
-            { text: TRANSLATIONS[currentLang].settings, callback: () => this.showSettingsModal() },
-            { text: TRANSLATIONS[currentLang].account, callback: () => this.showAccountModal() },
-            { text: TRANSLATIONS[currentLang].exit, callback: () => {
-                if (confirm("Are you sure you want to exit?")) {
-                    window.close();
-                    // Fallback if window.close() is blocked
-                    setTimeout(() => {
-                        window.location.href = "about:blank";
-                    }, 500);
-                }
-            }}
-        ];
-        
-        buttons.forEach((btn, i) => {
-            const btnMesh = this.createButton(btn.text, 5, 1, new THREE.Vector3(0, startY - i * gap, 10), btn.callback);
-            scene.add(btnMesh);
-            menuObjects.push(btnMesh);
-        });
-        
-        // Adjust camera for menu
-        camera.position.set(0, 2, 20);
-        camera.lookAt(0, 0, 10);
-        controls.target.set(0, 0, 10);
-        controls.enableRotate = false;
-        
-        document.getElementById('overlay').style.display = 'none';
-        document.getElementById('info').style.display = 'none';
-    },
-
-    startSinglePlayer() {
-        this.clearMenu();
-        currentState = GAME_STATES.PLAYING;
-        gameStarted = true;
-        document.getElementById('info').style.display = 'block';
-        initGame();
-    },
-
-    showMultiplayerModal() {
-        this.clearModal();
-        currentState = GAME_STATES.MULTIPLAYER;
-        const modal = this.createModal(
-            TRANSLATIONS[currentLang].multiplayer,
-            TRANSLATIONS[currentLang].multiplayer_placeholder,
-            10, 8,
-            [{ text: TRANSLATIONS[currentLang].back_to_menu, callback: () => this.showMainMenu() }]
-        );
-        modal.position.set(0, 2, 12);
-        scene.add(modal);
-        this.currentModal = modal;
-    },
-
-    showSettingsModal() {
-        this.clearModal();
-        currentState = GAME_STATES.SETTINGS;
-        
-        // Special modal for settings with toggles and sliders
-        const group = new THREE.Group();
-        const width = 10;
-        const height = 10;
-        
-        const bgGeom = new THREE.PlaneGeometry(width, height);
-        const bgMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.9 });
-        const bgMesh = new THREE.Mesh(bgGeom, bgMat);
-        group.add(bgMesh);
-        
-        const borderEdges = new THREE.EdgesGeometry(bgGeom);
-        const borderLine = new THREE.LineSegments(borderEdges, new THREE.LineBasicMaterial({ color: 0x00ff00 }));
-        group.add(borderLine);
-
-        // Close button
-        const closeBtn = this.createButton(TRANSLATIONS[currentLang].back_to_menu, 5, 0.8, new THREE.Vector3(0, -height / 2 + 1, 0.05), () => this.showMainMenu());
-        group.add(closeBtn);
-        modalObjects.push(closeBtn);
-
-        // Fullscreen Toggle
-        const fsBtn = this.createButton(TRANSLATIONS[currentLang].fullscreen, 4, 0.8, new THREE.Vector3(0, 2, 0.05), () => {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen();
-            } else {
-                if (document.exitFullscreen) document.exitFullscreen();
-            }
-        });
-        group.add(fsBtn);
-        modalObjects.push(fsBtn);
-
-        // Free Camera Toggle
-        const freeCamBtn = this.createButton(isFreeCamera ? "FREE CAM: ON" : "FREE CAM: OFF", 5, 0.6, new THREE.Vector3(0, 1.2, 0.05), () => {
-            isFreeCamera = !isFreeCamera;
-            Security.save('snake3d_free_cam', isFreeCamera);
-            freeCamBtn.parent.remove(freeCamBtn);
-            this.showSettingsModal(); // Refresh to update text
-        });
-        group.add(freeCamBtn);
-        modalObjects.push(freeCamBtn);
-
-        // Volume Controls
-        const musicUp = this.createButton("MUSIC +", 2.5, 0.6, new THREE.Vector3(2, 0.5, 0.05), () => {
-            audioManager.setMusicVolume(Math.min(1, audioManager.musicVolume + 0.1));
-            Notifications.show(`MUSIC: ${Math.round(audioManager.musicVolume * 100)}%`, 'warning');
-        });
-        const musicDown = this.createButton("MUSIC -", 2.5, 0.6, new THREE.Vector3(-2, 0.5, 0.05), () => {
-            audioManager.setMusicVolume(Math.max(0, audioManager.musicVolume - 0.1));
-            Notifications.show(`MUSIC: ${Math.round(audioManager.musicVolume * 100)}%`, 'warning');
-        });
-        
-        const sfxUp = this.createButton("SFX +", 2.5, 0.6, new THREE.Vector3(2, -0.5, 0.05), () => {
-            audioManager.setSfxVolume(Math.min(1, audioManager.sfxVolume + 0.1));
-            Notifications.show(`SFX: ${Math.round(audioManager.sfxVolume * 100)}%`, 'warning');
-        });
-        const sfxDown = this.createButton("SFX -", 2.5, 0.6, new THREE.Vector3(-2, -0.5, 0.05), () => {
-            audioManager.setSfxVolume(Math.max(0, audioManager.sfxVolume - 0.1));
-            Notifications.show(`SFX: ${Math.round(audioManager.sfxVolume * 100)}%`, 'warning');
-        });
-        
-        group.add(musicUp, musicDown, sfxUp, sfxDown);
-        modalObjects.push(musicUp, musicDown, sfxUp, sfxDown);
-
-        group.position.set(0, 2, 12);
-        scene.add(group);
-        this.currentModal = group;
-    },
-
-    showAccountModal() {
-        this.clearModal();
-        currentState = GAME_STATES.ACCOUNT;
-        const modal = this.createModal(
-            TRANSLATIONS[currentLang].account,
-            `${TRANSLATIONS[currentLang].account_placeholder}\n\n[ ${TRANSLATIONS[currentLang].username} ]\n[ ${TRANSLATIONS[currentLang].password} ]`,
-            12, 10,
-            [
-                { text: TRANSLATIONS[currentLang].login, callback: () => Notifications.show("Login feature coming soon!", "warning") },
-                { text: TRANSLATIONS[currentLang].create_account, callback: () => Notifications.show("Account creation coming soon!", "warning") },
-                { text: TRANSLATIONS[currentLang].back_to_menu, callback: () => this.showMainMenu() }
-            ]
-        );
-        modal.position.set(0, 2, 12);
-        scene.add(modal);
-        this.currentModal = modal;
-    }
-};
-
-// Interaction Handling for 3D UI
-function onMouseClick(event) {
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-    raycaster.setFromCamera(mouse, camera);
-    
-    const interactables = [...menuObjects, ...modalObjects];
-    const intersects = raycaster.intersectObjects(interactables);
-
-    if (intersects.length > 0) {
-        const obj = intersects[0].object;
-        if (obj.userData.isButton && obj.userData.callback) {
-            audioManager.playUiClick();
-            obj.userData.callback();
-        }
-    }
-}
-
-function onMouseMove(event) {
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-    raycaster.setFromCamera(mouse, camera);
-    
-    const interactables = [...menuObjects, ...modalObjects];
-    const intersects = raycaster.intersectObjects(interactables);
-
-    // Hover effect
-    interactables.forEach(obj => {
-        if (obj.userData.isButton) {
-            obj.scale.copy(obj.userData.originalScale);
-        }
-    });
-
-    if (intersects.length > 0) {
-        const obj = intersects[0].object;
-        if (obj.userData.isButton) {
-            obj.scale.multiplyScalar(1.1);
-            document.body.style.cursor = 'pointer';
-        }
-    } else {
-        document.body.style.cursor = 'default';
-    }
-}
-
-window.addEventListener('click', onMouseClick);
-window.addEventListener('mousemove', onMouseMove);
-
 // Notification Manager
 const Notifications = {
     show(message, type = 'error') {
@@ -2131,22 +1810,6 @@ const Security = {
         return true;
     }
 };
-
-// Game states
-const GAME_STATES = {
-    MENU: 'MENU',
-    PLAYING: 'PLAYING',
-    SETTINGS: 'SETTINGS',
-    ACCOUNT: 'ACCOUNT',
-    MULTIPLAYER: 'MULTIPLAYER'
-};
-let currentState = GAME_STATES.MENU;
-
-// Raycasting for 3D UI
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-let menuObjects = [];
-let modalObjects = [];
 
 // Game state
 let snake = [];
@@ -2482,12 +2145,7 @@ loadingManager.onLoad = () => {
     setTimeout(() => {
         if (loadingOverlay) {
             loadingOverlay.style.opacity = '0';
-            setTimeout(() => {
-                loadingOverlay.style.display = 'none';
-                if (Consent.check()) {
-                    UI3D.showMainMenu();
-                }
-            }, 500);
+            setTimeout(() => loadingOverlay.style.display = 'none', 500);
         }
     }, 500);
 };
@@ -3241,9 +2899,9 @@ function endGame(reason = null) {
     
     updateUI();
     setTimeout(() => {
+        document.getElementById('overlay').style.display = 'flex';
         gameStarted = false;
         cheaterDetected = false; // Reset for next run
-        UI3D.showMainMenu();
     }, 1000);
 }
 
@@ -3825,6 +3483,11 @@ document.getElementById('free-cam-checkbox').onchange = (e) => {
     }
 };
 
+document.getElementById('fullscreen-checkbox').onchange = (e) => {
+    audioManager.playUiClick();
+    toggleFullscreen();
+};
+
 // Swipe Area Event Listeners for Mobile Free Camera
 const swipeArea = document.getElementById('camera-swipe-area');
 swipeArea.addEventListener('touchstart', (e) => {
@@ -3950,66 +3613,67 @@ function onKeyUp(event) {
 function animate() {
      requestAnimationFrame(animate);
      
-     if (currentState === GAME_STATES.PLAYING) {
+     if (isMainMenuActive) {
+         animateDecorativeObjects(decorativeObjects);
+         // Subtle tilt based on mouse
+         camera.position.x = THREE.MathUtils.lerp(camera.position.x, mouse.x * 2, 0.05);
+         camera.position.y = THREE.MathUtils.lerp(camera.position.y, mouse.y * 2, 0.05);
+         camera.lookAt(0, 0, 0);
+         
+         menuButtons.forEach(btn => {
+             btn.rotation.y = Math.sin(Date.now() * 0.001) * 0.1;
+         });
+     } else {
          update();
          updateParticles();
-     }
-     
-     animateDecorativeObjects(decorativeObjects);
-     
-     if (currentState === GAME_STATES.PLAYING) {
+         animateDecorativeObjects(decorativeObjects);
+         
          if (isFreeCamera) {
-             // WASD movement for free camera
-             const moveSpeed = 0.5;
-             const forward = new THREE.Vector3();
-             camera.getWorldDirection(forward);
-             forward.y = 0; // Keep movement on ground plane
-             forward.normalize();
-             
-             const right = new THREE.Vector3();
-             right.crossVectors(forward, camera.up).normalize();
+         // WASD movement for free camera
+         const moveSpeed = 0.5;
+         const forward = new THREE.Vector3();
+         camera.getWorldDirection(forward);
+         forward.y = 0; // Keep movement on ground plane
+         forward.normalize();
+         
+         const right = new THREE.Vector3();
+         right.crossVectors(forward, camera.up).normalize();
 
-             if (keysPressed['w']) camera.position.addScaledVector(forward, moveSpeed);
-             if (keysPressed['s']) camera.position.addScaledVector(forward, -moveSpeed);
-             if (keysPressed['a']) camera.position.addScaledVector(right, -moveSpeed);
-             if (keysPressed['d']) camera.position.addScaledVector(right, moveSpeed);
-             if (keysPressed['q']) camera.position.y += moveSpeed;
-             if (keysPressed['e']) camera.position.y -= moveSpeed;
-             
-             controls.target.addScaledVector(forward, (keysPressed['w'] ? moveSpeed : 0) + (keysPressed['s'] ? -moveSpeed : 0));
-             controls.target.addScaledVector(right, (keysPressed['a'] ? -moveSpeed : 0) + (keysPressed['d'] ? moveSpeed : 0));
-             controls.target.y += (keysPressed['q'] ? moveSpeed : 0) + (keysPressed['e'] ? -moveSpeed : 0);
+         if (keysPressed['w']) camera.position.addScaledVector(forward, moveSpeed);
+         if (keysPressed['s']) camera.position.addScaledVector(forward, -moveSpeed);
+         if (keysPressed['a']) camera.position.addScaledVector(right, -moveSpeed);
+         if (keysPressed['d']) camera.position.addScaledVector(right, moveSpeed);
+         if (keysPressed['q']) camera.position.y += moveSpeed;
+         if (keysPressed['e']) camera.position.y -= moveSpeed;
+         
+         // In free camera mode, we still want to look at something if needed, 
+         // but usually OrbitControls handles the "lookAt" via its target.
+         // If we move the camera manually, OrbitControls target stays behind.
+         // Let's update the target to move with the camera to keep it intuitive.
+         controls.target.addScaledVector(forward, (keysPressed['w'] ? moveSpeed : 0) + (keysPressed['s'] ? -moveSpeed : 0));
+         controls.target.addScaledVector(right, (keysPressed['a'] ? -moveSpeed : 0) + (keysPressed['d'] ? moveSpeed : 0));
+         controls.target.y += (keysPressed['q'] ? moveSpeed : 0) + (keysPressed['e'] ? -moveSpeed : 0);
 
-             if (isTouchDevice && touchMoved) {
-                 camera.position.addScaledVector(forward, -swipeCameraVelocity.y * 10);
-                 camera.position.addScaledVector(right, swipeCameraVelocity.x * 10);
-                 controls.target.addScaledVector(forward, -swipeCameraVelocity.y * 10);
-                 controls.target.addScaledVector(right, swipeCameraVelocity.x * 10);
-             }
-         } else if (snake.length > 0) {
-             const headPos = snake[0].pos;
-             if (isTouchDevice) {
-                 camera.position.lerp(new THREE.Vector3(0, 30, 0), 0.05);
-                 controls.target.lerp(new THREE.Vector3(0, 0, 0), 0.1);
-             } else {
-                 const targetPos = headPos.clone().add(new THREE.Vector3(0, 10, 20));
-                 camera.position.lerp(targetPos, 0.05);
-                 controls.target.lerp(headPos, 0.1);
-             }
+         // Apply swipe movement for mobile free camera
+         if (isTouchDevice && touchMoved) {
+             camera.position.addScaledVector(forward, -swipeCameraVelocity.y * 10);
+             camera.position.addScaledVector(right, swipeCameraVelocity.x * 10);
+             controls.target.addScaledVector(forward, -swipeCameraVelocity.y * 10);
+             controls.target.addScaledVector(right, swipeCameraVelocity.x * 10);
          }
-     } else if (currentState === GAME_STATES.MENU || currentState === GAME_STATES.SETTINGS || currentState === GAME_STATES.ACCOUNT || currentState === GAME_STATES.MULTIPLAYER) {
-        // Menu camera behavior: slight floating/rotation
-        const time = Date.now() * 0.001;
-        camera.position.x = Math.sin(time * 0.5) * 2;
-        camera.position.y = 2 + Math.cos(time * 0.5) * 0.5;
-        camera.lookAt(0, 0, 10);
-        
-        // Animate menu buttons
-        menuObjects.forEach((obj, i) => {
-            obj.rotation.y = Math.sin(time + i) * 0.1;
-            obj.position.z = 10 + Math.cos(time + i) * 0.2;
-        });
-    }
+     } else if (snake.length > 0) {
+         const headPos = snake[0].pos;
+         if (isTouchDevice) {
+             // Static bird's eye view for mobile
+             camera.position.lerp(new THREE.Vector3(0, 30, 0), 0.05);
+             controls.target.lerp(new THREE.Vector3(0, 0, 0), 0.1);
+         } else {
+             // Dynamic trailing camera for desktop
+             const targetPos = headPos.clone().add(new THREE.Vector3(0, 10, 20));
+             camera.position.lerp(targetPos, 0.05);
+             controls.target.lerp(headPos, 0.1);
+         }
+     }
 
     // Animate starfield slightly
     if (starfield) {
@@ -4050,7 +3714,7 @@ window.addEventListener('resize', () => {
         }
         
         // Mobile-specific camera adjustments on rotation
-        if (isTouchDevice && currentState === GAME_STATES.PLAYING && !isFreeCamera) {
+        if (isTouchDevice && !isFreeCamera) {
             // Re-center camera for bird's eye view
             camera.position.set(0, 30, 0);
             camera.lookAt(0, 0, 0);
@@ -4107,17 +3771,21 @@ const Consent = {
         document.getElementById('consent-overlay').style.display = 'none';
         
         // Unlock menu buttons
-        Security.save('snake3d_consented', true);
-        Security.save('snake3d_geo_consented', geoConsented);
-        Security.save('snake3d_consent_version', this.VERSION);
-        
-        document.getElementById('consent-overlay').style.display = 'none';
+        const startBtn = document.getElementById('start-btn');
+        if (startBtn) {
+            startBtn.disabled = false;
+            startBtn.title = "";
+        }
+        const shopBtn = document.getElementById('shop-btn');
+        if (shopBtn) {
+            shopBtn.disabled = false;
+            shopBtn.title = "";
+        }
         
         // Clear cached language for fresh detection
         Security.save('snake3d_lang_cache', null);
         detectLanguage();
         ModManager.loadMods();
-        UI3D.showMainMenu();
     }
 };
 
@@ -4126,10 +3794,210 @@ document.getElementById('accept-consent-btn').onclick = () => {
     Consent.accept();
 };
 
-// Initialize
-if (Consent.check()) {
-    detectLanguage();
-    ModManager.loadMods();
-} else {
-    // Consent overlay is handled by Consent.check()
+let menuScene, menuCamera, menuRenderer, menuButtons = [];
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2();
+let isMainMenuActive = false;
+
+function init3DMenu() {
+    isMainMenuActive = true;
+    document.getElementById('overlay').style.display = 'none'; // Hide the old overlay
+    
+    // Clear any existing game state if necessary
+    gameStarted = false;
+    
+    // We'll reuse the main renderer or create a separate one? 
+    // Let's use the main scene/camera but clear it for the menu.
+    scene.clear();
+    decorativeObjects = [];
+    particles = [];
+    
+    // Setup Menu Camera
+    camera.position.set(0, 0, 15);
+    camera.lookAt(0, 0, 0);
+    controls.enabled = false;
+
+    // Background for menu
+    currentBgId = 'space'; 
+    updateBackground();
+
+    // Create 3D Buttons
+    const buttonLabels = ['Singleplayer', 'Multiplayer', 'Settings', 'Account', 'Exit'];
+    menuButtons = [];
+
+    buttonLabels.forEach((label, i) => {
+        const geometry = new THREE.BoxGeometry(6, 1.2, 0.5);
+        const material = new THREE.MeshPhongMaterial({ color: 0x333333, emissive: 0x00ff00, emissiveIntensity: 0.1 });
+        const button = new THREE.Mesh(geometry, material);
+        button.position.y = 3 - i * 1.8;
+        button.userData = { action: label.toLowerCase() };
+        
+        // Add text label (using CanvasTexture for simplicity without extra font loaders)
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#00ff00';
+        ctx.font = 'bold 60px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, 256, 64);
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        const labelMaterial = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+        const labelPlane = new THREE.Mesh(new THREE.PlaneGeometry(5, 1), labelMaterial);
+        labelPlane.position.z = 0.26;
+        button.add(labelPlane);
+
+        scene.add(button);
+        menuButtons.push(button);
+    });
+
+    // Add event listeners for 3D Menu
+    window.addEventListener('mousedown', onMenuClick);
+    window.addEventListener('mousemove', onMenuHover);
 }
+
+function onMenuHover(event) {
+    if (!isMainMenuActive) return;
+    
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(menuButtons);
+
+    menuButtons.forEach(btn => {
+        btn.material.emissiveIntensity = 0.1;
+        btn.scale.set(1, 1, 1);
+    });
+
+    if (intersects.length > 0) {
+        intersects[0].object.material.emissiveIntensity = 0.5;
+        intersects[0].object.scale.set(1.05, 1.05, 1.05);
+        document.body.style.cursor = 'pointer';
+    } else {
+        document.body.style.cursor = 'default';
+    }
+}
+
+function onMenuClick(event) {
+    if (!isMainMenuActive) return;
+
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(menuButtons);
+
+    if (intersects.length > 0) {
+        const action = intersects[0].object.userData.action;
+        handleMenuAction(action);
+    }
+}
+
+function handleMenuAction(action) {
+    audioManager.playUiClick();
+    switch(action) {
+        case 'singleplayer':
+            startSingleplayer();
+            break;
+        case 'multiplayer':
+            Notifications.show("Multiplayer mode is coming soon!", "warning");
+            break;
+        case 'settings':
+            document.getElementById('settings-overlay').style.display = 'flex';
+            break;
+        case 'account':
+            document.getElementById('account-overlay').style.display = 'flex';
+            break;
+        case 'exit':
+            if (confirm("Close the game?")) {
+                window.close();
+                // Fallback if window.close() is blocked by browser
+                setTimeout(() => {
+                    window.location.href = "about:blank";
+                }, 100);
+            }
+            break;
+    }
+}
+
+// Fullscreen toggle logic for settings
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'F11') {
+        // Handle F11 manually to ensure UI sync if needed
+    }
+});
+
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+            Notifications.show(`Error attempting to enable full-screen mode: ${err.message}`, 'error');
+        });
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
+}
+
+// Close account modal
+document.getElementById('close-account-btn').onclick = () => {
+    audioManager.playUiClick();
+    document.getElementById('account-overlay').style.display = 'none';
+};
+
+document.getElementById('account-login-btn').onclick = () => {
+    const user = document.getElementById('username-input').value;
+    const pass = document.getElementById('password-input').value;
+    if (user && pass) {
+        audioManager.playUiClick();
+        Notifications.show(`Welcome, ${user}! Account created (Placeholder).`, 'warning');
+        document.getElementById('account-overlay').style.display = 'none';
+    } else {
+        audioManager.playErrorSound();
+        Notifications.show("Please enter both username and password.", "error");
+    }
+};
+
+function startSingleplayer() {
+    isMainMenuActive = false;
+    window.removeEventListener('mousedown', onMenuClick);
+    window.removeEventListener('mousemove', onMenuHover);
+    document.body.style.cursor = 'default';
+    
+    // Clear menu objects
+    scene.clear();
+    menuButtons = [];
+    
+    // Reset camera for game
+    camera.position.set(0, 10, 20);
+    camera.lookAt(0, 0, 0);
+    controls.enabled = true;
+    
+    gameStarted = true;
+    initGame();
+}
+
+// Update the init sequence
+async function startApp() {
+    if (Consent.check()) {
+        await detectLanguage();
+        await ModManager.loadMods();
+        init3DMenu();
+    } else {
+        // Wait for consent
+        document.getElementById('accept-consent-btn').addEventListener('click', async () => {
+            await detectLanguage();
+            await ModManager.loadMods();
+            init3DMenu();
+        }, { once: true });
+    }
+}
+
+// Call startApp instead of the loose initialization
+startApp();
+
+// In animate function, add check for menu rotation
+// Redundant animate function removed as it is now integrated above
