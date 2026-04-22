@@ -1432,8 +1432,13 @@ const BACKGROUNDS = [
         }
     },
     { 
-        id: 'neon', nameKey: 'neon_city', color: 0x000022, stars: false, grid: 0x00ffff, fog: 0x000044, envType: 'cubes', price: 100,
+        id: 'neon', nameKey: 'neon_city', color: 0x000011, stars: true, grid: 0xff00ff, fog: 0x000022, envType: 'cubes', price: 100,
         groundTexture: 'neon',
+        ambientLightColor: 0x220044,
+        ambientLightIntensity: 0.8,
+        pointLightColor: 0x00ffff,
+        pointLightIntensity: 1.5,
+        particleColor: 0x00ffff,
         music: { 
             speed: 0.15,
             reverb: 0.3,
@@ -2442,18 +2447,66 @@ function updateBackground() {
             break;
         }
         case 'cubes': {
-            const cubeCount = isLowPerformance ? 5 : 20;
-            for (let i = 0; i < cubeCount; i++) {
-                const geometry = new THREE.BoxGeometry(2, 2, 2);
-                const material = new THREE.MeshPhongMaterial({ color: 0x00ffff, wireframe: true });
+            const skyscraperCount = isLowPerformance ? 10 : 40;
+            const colors = [0x00ffff, 0xff00ff, 0x00ff00, 0xffff00];
+            
+            for (let i = 0; i < skyscraperCount; i++) {
+                const w = Math.random() * 4 + 2;
+                const h = Math.random() * 30 + 10;
+                const d = Math.random() * 4 + 2;
+                const geometry = new THREE.BoxGeometry(w, h, d);
+                
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const material = new THREE.MeshPhongMaterial({ 
+                    color: 0x111111, 
+                    emissive: color,
+                    emissiveIntensity: 0.2,
+                    shininess: 100
+                });
+                
                 const mesh = new THREE.Mesh(geometry, material);
+                
+                // Position around the grid
+                let x = (Math.random() - 0.5) * 150;
+                let z = (Math.random() - 0.5) * 150;
+                
+                // Don't place buildings too close to the playable grid
+                if (Math.abs(x) < 15 && Math.abs(z) < 15) {
+                    x += x > 0 ? 20 : -20;
+                    z += z > 0 ? 20 : -20;
+                }
+                
+                mesh.position.set(x, h/2 - 5, z);
+                scene.add(mesh);
+                
+                // Add wireframe "neon" edges
+                const edges = new THREE.EdgesGeometry(geometry);
+                const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: color }));
+                mesh.add(line);
+                
+                decorativeObjects.push({ mesh, rotationSpeed: 0 });
+            }
+            
+            // Add "Neon Traffic"
+            const trafficCount = isLowPerformance ? 5 : 20;
+            for (let i = 0; i < trafficCount; i++) {
+                const size = Math.random() * 0.3 + 0.1;
+                const geometry = new THREE.SphereGeometry(size, 8, 8);
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const material = new THREE.MeshBasicMaterial({ color: color });
+                const mesh = new THREE.Mesh(geometry, material);
+                
+                const axis = Math.random() > 0.5 ? 'x' : 'z';
+                const speed = (Math.random() * 0.2 + 0.1) * (Math.random() > 0.5 ? 1 : -1);
+                
                 mesh.position.set(
                     (Math.random() - 0.5) * 100,
-                    Math.random() * 50,
+                    Math.random() * 5 + 1,
                     (Math.random() - 0.5) * 100
                 );
+                
                 scene.add(mesh);
-                decorativeObjects.push({ mesh, rotationSpeed: Math.random() * 0.02 });
+                decorativeObjects.push({ mesh, speed, axis });
             }
             break;
         }
@@ -3105,12 +3158,21 @@ function updateShopPreviewBg() {
             break;
         }
         case 'cubes': {
-            for (let i = 0; i < 10; i++) {
-                const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-                const mesh = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial({ color: 0x00ffff, wireframe: true }));
-                mesh.position.set((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
+            const colors = [0x00ffff, 0xff00ff, 0x00ff00, 0xffff00];
+            for (let i = 0; i < 15; i++) {
+                const h = Math.random() * 10 + 5;
+                const geometry = new THREE.BoxGeometry(2, h, 2);
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const material = new THREE.MeshPhongMaterial({ color: 0x111111, emissive: color, emissiveIntensity: 0.3 });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set((Math.random() - 0.5) * 20, h/2 - 2, (Math.random() - 0.5) * 20);
+                
+                const edges = new THREE.EdgesGeometry(geometry);
+                const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: color }));
+                mesh.add(line);
+                
                 shopScene.add(mesh);
-                shopDecorativeObjects.push({ mesh, rotationSpeed: 0.03 });
+                shopDecorativeObjects.push({ mesh, rotationSpeed: 0 });
             }
             break;
         }
@@ -3205,8 +3267,18 @@ function animateDecorativeObjects(objects) {
             obj.mesh.rotation.x += obj.rotationSpeed * 0.5;
         }
         if (obj.speed) {
-            obj.mesh.position.y -= obj.speed;
-            if (obj.mesh.position.y < -50) obj.mesh.position.y = 50;
+            if (obj.axis === 'x') {
+                obj.mesh.position.x += obj.speed;
+                if (obj.mesh.position.x > 100) obj.mesh.position.x = -100;
+                if (obj.mesh.position.x < -100) obj.mesh.position.x = 100;
+            } else if (obj.axis === 'z') {
+                obj.mesh.position.z += obj.speed;
+                if (obj.mesh.position.z > 100) obj.mesh.position.z = -100;
+                if (obj.mesh.position.z < -100) obj.mesh.position.z = 100;
+            } else {
+                obj.mesh.position.y -= obj.speed;
+                if (obj.mesh.position.y < -50) obj.mesh.position.y = 50;
+            }
         }
         if (obj.floatSpeed) {
             obj.mesh.position.y = obj.initialY + Math.sin(now * 0.001 * obj.floatSpeed * 50) * 2;
