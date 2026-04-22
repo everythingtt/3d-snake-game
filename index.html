@@ -96,24 +96,7 @@
             <p id="loading-status">Initializing Starfield...</p>
         </div>
     </div>
-    <div id="overlay">
-        <div id="menu">
-            <h1 data-t="game_title">3D Snake</h1>
-            <p data-t="space_journey">Space Journey</p>
-            <div id="high-score-display"><span data-t="high">High Score</span>: <span id="menu-high-score">0</span></div>
-            <div id="coin-display"><span data-t="coins">Coins</span>: <span id="menu-coins">0</span></div>
-            <div class="menu-buttons">
-                <button id="start-btn" data-t="start_game">Start Game</button>
-                <button id="shop-btn" data-t="open_shop">Open Shop</button>
-            </div>
-            <div class="legal-footer">
-                <a href="legal/TERMS.md" target="_blank">Terms</a> | 
-                <a href="legal/PRIVACY.md" target="_blank">Privacy</a> | 
-                <a href="legal/COOKIES.md" target="_blank">Cookies</a> |
-                <a href="legal/MODDING_GUIDELINES.md" target="_blank">Themes</a>
-            </div>
-        </div>
-    </div>
+    
     <div id="consent-overlay" style="display: none;">
         <div id="consent-modal">
             <h2>Welcome to Space Journey</h2>
@@ -176,51 +159,6 @@
             <button id="right-btn" class="touch-btn">▶</button>
         </div>
     </div>
-    <div id="settings-overlay" style="display: none;">
-        <div id="settings-modal">
-            <h2 data-t="settings">Settings</h2>
-            
-            <div class="setting-item">
-                <label data-t="music_volume">Music Volume</label>
-                <input type="range" id="music-volume-slider" min="0" max="1" step="0.01" value="0.5">
-            </div>
-
-            <div class="setting-item">
-                <label data-t="sfx_volume">Sound Effects</label>
-                <input type="range" id="sfx-volume-slider" min="0" max="1" step="0.01" value="0.5">
-            </div>
-
-            <div class="setting-item">
-                <label class="consent-checkbox">
-                    <input type="checkbox" id="free-cam-checkbox">
-                    <span class="checkmark"></span>
-                    <span data-t="free_camera">Free Camera Mode</span>
-                </label>
-                <p class="small-text-muted">Disable trailing camera for manual control.</p>
-            </div>
-
-            <div class="setting-item">
-                <label data-t="key_config">Key Configuration</label>
-                <div id="key-config-list" class="key-config-grid">
-                    <div class="key-item"><span>Up</span><button class="key-bind-btn" data-action="up">↑</button></div>
-                    <div class="key-item"><span>Down</span><button class="key-bind-btn" data-action="down">↓</button></div>
-                    <div class="key-item"><span>Left</span><button class="key-bind-btn" data-action="left">←</button></div>
-                    <div class="key-item"><span>Right</span><button class="key-bind-btn" data-action="right">→</button></div>
-                    <div class="key-item"><span>Shop</span><button class="key-bind-btn" data-action="shop">S</button></div>
-                    <div class="key-item"><span>Performance</span><button class="key-bind-btn" data-action="perf">F</button></div>
-                    <div class="key-item"><span>Free Cam</span><button class="key-bind-btn" data-action="freeCam">C</button></div>
-                    <div class="key-item"><span>Pause</span><button class="key-bind-btn" data-action="pause">P</button></div>
-                    <div class="key-item"><span>Vol Up</span><button class="key-bind-btn" data-action="volUp">+</button></div>
-                    <div class="key-item"><span>Vol Down</span><button class="key-bind-btn" data-action="volDown">-</button></div>
-                </div>
-            </div>
-
-            <div class="menu-buttons">
-                <button id="close-settings-btn" data-t="back_to_menu">Back to Menu</button>
-            </div>
-        </div>
-    </div>
-
     <div id="game-container"></div>
     <div id="camera-swipe-area" style="display: none;"></div>
     <div id="notification-container"></div>
