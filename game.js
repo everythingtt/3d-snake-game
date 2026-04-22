@@ -3704,8 +3704,7 @@ const MenuManager = {
         camera.lookAt(0, 0, 0);
         controls.enabled = false;
         
-        // Setup Neon City for menu background
-        currentBgId = 'neon';
+        // Setup current background for menu
         updateBackground();
     },
 
