@@ -3525,17 +3525,22 @@ document.querySelectorAll('button').forEach(btn => {
 });
 
 function onKeyDown(event) {
+    if (!event.key) return;
     const key = event.key.toLowerCase();
     const originalKey = event.key; // For volume +/- which might be case-sensitive in some layouts
     keysPressed[key] = true;
+
+    // Prevent game keys from triggering while typing in inputs (Account modal)
+    if (event.target.tagName === 'INPUT') return;
 
     // Global shortcuts (available even if game not started)
     if (rebindingAction) return;
 
     // Helper to check keybinds
-    const isBind = (action, k) => keyBinds[action].toLowerCase() === k.toLowerCase() || keyBinds[action] === k;
+    const isBind = (action, k) => (keyBinds[action] && keyBinds[action].toLowerCase() === k.toLowerCase()) || keyBinds[action] === k;
 
     if (isBind('shop', originalKey) || isBind('shop', 'b')) { // Keep 'b' as a hardcoded fallback for shop
+        if (isMainMenu) return; // Disable shop in main menu
         const shopOverlay = document.getElementById('shop-overlay');
         if (shopOverlay.style.display === 'flex') {
             document.getElementById('close-shop-btn').click();
@@ -3551,6 +3556,7 @@ function onKeyDown(event) {
     }
 
     if (isBind('freeCam', originalKey)) {
+        if (isMainMenu) return; // Disable freecam toggle in main menu
         isFreeCamera = !isFreeCamera;
         Security.save('snake3d_free_cam', isFreeCamera);
         audioManager.playUiClick();
@@ -3585,7 +3591,7 @@ function onKeyDown(event) {
         return;
     }
 
-    if (!gameStarted) return;
+    if (!gameStarted || isMainMenu) return;
     
     if (isBind('pause', originalKey) || originalKey === ' ') { // Keep space as a hardcoded fallback for pause
         togglePause();
@@ -3602,6 +3608,7 @@ function onKeyDown(event) {
 }
 
 function onKeyUp(event) {
+    if (!event.key) return;
     keysPressed[event.key.toLowerCase()] = false;
 }
 
