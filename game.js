@@ -45,11 +45,7 @@ const TRANSLATIONS = {
         music_volume: "Music Volume",
         sfx_volume: "Sound Effects",
         free_camera: "Free Camera Mode",
-        game_won: "VICTORY! You have conquered the galaxy!",
-        singleplayer: "Singleplayer",
-        multiplayer: "Multiplayer",
-        account: "Account",
-        exit: "Exit"
+        game_won: "VICTORY! You have conquered the galaxy!"
     },
     ar: {
         game_title: "لعبة الثعبان ثلاثية الأبعاد",
@@ -2144,12 +2140,167 @@ loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
     if (loadingStatus) loadingStatus.innerText = `Downloading: ${url.split('/').pop()}...`;
 };
 
+// Main Menu Manager
+const MainMenuManager = {
+    init() {
+        // Setup 3D Menu Background
+        this.setupBackground();
+        
+        // Add listeners for menu options
+        document.getElementById('singleplayer-btn').onclick = () => {
+            audioManager.playUiClick();
+            this.hide();
+            gameStarted = true;
+            updateBackground();
+            initGame();
+        };
+
+        document.getElementById('multiplayer-btn').onclick = () => {
+            audioManager.playErrorSound();
+            Notifications.show("Multiplayer mode is currently LOCKED. Stay tuned for future updates!", "warning");
+        };
+
+        document.getElementById('open-settings-btn').onclick = () => {
+            audioManager.playUiClick();
+            document.getElementById('settings-overlay').style.display = 'flex';
+            this.syncSettingsUI();
+        };
+
+        document.getElementById('account-btn').onclick = () => {
+            audioManager.playUiClick();
+            document.getElementById('account-overlay').style.display = 'flex';
+        };
+
+        document.getElementById('exit-btn').onclick = () => {
+            audioManager.playUiClick();
+            if (confirm("Are you sure you want to exit?")) {
+                window.close();
+                // Fallback if window.close() is blocked
+                setTimeout(() => {
+                    window.location.href = "about:blank";
+                }, 500);
+            }
+        };
+
+        // Modal close buttons
+        document.getElementById('close-account-btn').onclick = () => {
+            audioManager.playUiClick();
+            document.getElementById('account-overlay').style.display = 'none';
+        };
+
+        // Account placeholder actions
+        document.getElementById('login-btn').onclick = () => {
+            audioManager.playErrorSound();
+            Notifications.show("Login failed: Authentication servers OFFLINE.", "error");
+        };
+
+        document.getElementById('register-btn').onclick = () => {
+            audioManager.playErrorSound();
+            Notifications.show("Registration failed: Cyber-grid connection error.", "error");
+        };
+
+        // Fullscreen toggle
+        document.getElementById('fullscreen-checkbox').onchange = (e) => {
+            audioManager.playUiClick();
+            if (e.target.checked) {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        };
+
+        // Sync initial fullscreen state
+        document.addEventListener('fullscreenchange', () => {
+            document.getElementById('fullscreen-checkbox').checked = !!document.fullscreenElement;
+        });
+    },
+
+    setupBackground() {
+        // Use a cool 3D background for the menu
+        currentBgId = 'neon'; // Default cool background for menu
+        updateBackground();
+        
+        // Position camera for cinematic menu look
+        camera.position.set(20, 15, 20);
+        camera.lookAt(0, 0, 0);
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.5;
+        
+        // Add a "dummy" snake for the menu background
+        this.createMenuSnake();
+    },
+
+    createMenuSnake() {
+        // Clear any existing dummy snake
+        if (this.dummySnake) {
+            this.dummySnake.forEach(seg => scene.remove(seg.mesh));
+        }
+        this.dummySnake = [];
+        const materials = getSkinMaterials('matrix');
+        for (let i = 0; i < 15; i++) {
+            const mesh = new THREE.Mesh(cubeGeometry, i === 0 ? materials.head : materials.body);
+            mesh.position.set(-i + 10, 0.5, -10);
+            scene.add(mesh);
+            this.dummySnake.push({ mesh });
+        }
+    },
+
+    syncSettingsUI() {
+        document.getElementById('music-volume-slider').value = audioManager.musicVolume;
+        document.getElementById('sfx-volume-slider').value = audioManager.sfxVolume;
+        document.getElementById('free-cam-checkbox').checked = isFreeCamera;
+        document.getElementById('fullscreen-checkbox').checked = !!document.fullscreenElement;
+        
+        document.querySelectorAll('.key-bind-btn').forEach(btn => {
+            const action = btn.getAttribute('data-action');
+            btn.innerText = keyBinds[action];
+        });
+    },
+
+    show() {
+        document.getElementById('overlay').style.display = 'flex';
+        controls.autoRotate = true;
+        gameStarted = false;
+        audioManager.updateMusicTheme('neon');
+    },
+
+    hide() {
+        document.getElementById('overlay').style.display = 'none';
+        controls.autoRotate = false;
+        if (this.dummySnake) {
+            this.dummySnake.forEach(seg => scene.remove(seg.mesh));
+            this.dummySnake = null;
+        }
+    }
+};
+
+// Update existing Consent accept to show Main Menu
+const originalConsentAccept = Consent.accept;
+Consent.accept = function() {
+    originalConsentAccept.apply(this);
+    MainMenuManager.init();
+    MainMenuManager.show();
+};
+
+// Update LoadingManager onLoad to show Consent or Menu
 loadingManager.onLoad = () => {
     if (loadingStatus) loadingStatus.innerText = "System Ready. Initializing Simulation...";
     setTimeout(() => {
         if (loadingOverlay) {
             loadingOverlay.style.opacity = '0';
-            setTimeout(() => loadingOverlay.style.display = 'none', 500);
+            setTimeout(() => {
+                loadingOverlay.style.display = 'none';
+                if (Consent.check()) {
+                    MainMenuManager.init();
+                    MainMenuManager.show();
+                    detectLanguage();
+                    ModManager.loadMods();
+                }
+            }, 500);
         }
     }, 500);
 };
@@ -2903,9 +3054,7 @@ function endGame(reason = null) {
     
     updateUI();
     setTimeout(() => {
-        document.getElementById('overlay').style.display = 'flex';
-        gameStarted = false;
-        cheaterDetected = false; // Reset for next run
+        MainMenuManager.show();
     }, 1000);
 }
 
@@ -3390,62 +3539,6 @@ document.getElementById('close-shop-btn').onclick = () => {
     document.getElementById('shop-overlay').style.display = 'none';
 };
 
-document.getElementById('reset-data-btn').onclick = () => {
-    audioManager.playUiClick();
-    Security.resetData();
-};
-
-document.getElementById('singleplayer-btn').onclick = () => {
-    audioManager.playUiClick();
-    document.getElementById('overlay').style.display = 'none';
-    audioManager.init();
-    audioManager.updateMusicTheme(currentBgId); // Start themed music
-    gameStarted = true;
-    updateBackground(); // Ensure background is correct for game start
-    initGame();
-};
-
-document.getElementById('multiplayer-btn').onclick = () => {
-    audioManager.playUiClick();
-    Notifications.show("Multiplayer mode is coming soon!", "warning");
-};
-
-document.getElementById('main-settings-btn').onclick = () => {
-    document.getElementById('settings-btn').click();
-};
-
-document.getElementById('account-btn').onclick = () => {
-    audioManager.playUiClick();
-    document.getElementById('account-overlay').style.display = 'flex';
-};
-
-document.getElementById('close-account-btn').onclick = () => {
-    audioManager.playUiClick();
-    document.getElementById('account-overlay').style.display = 'none';
-};
-
-document.getElementById('exit-btn').onclick = () => {
-    audioManager.playUiClick();
-    if (confirm("Are you sure you want to exit the game?")) {
-        window.close();
-        // Fallback for browsers that block window.close
-        setTimeout(() => {
-            alert("To exit, please close this browser tab.");
-        }, 500);
-    }
-};
-
-document.getElementById('login-btn').onclick = () => {
-    audioManager.playUiClick();
-    const user = document.getElementById('username-input').value;
-    if (user) {
-        Notifications.show(`Welcome, ${user}! Account functionality is a placeholder.`, "warning");
-        document.getElementById('close-account-btn').click();
-    } else {
-        Notifications.show("Please enter a username.", "error");
-    }
-};
-
 document.getElementById('mute-btn').onclick = () => {
     audioManager.init();
     audioManager.isMuted = !audioManager.isMuted;
@@ -3453,22 +3546,6 @@ document.getElementById('mute-btn').onclick = () => {
     Security.save('snake3d_muted', audioManager.isMuted);
     document.getElementById('mute-btn').innerText = audioManager.isMuted ? '🔇' : '🔊';
     audioManager.playUiClick();
-};
-
-document.getElementById('settings-btn').onclick = () => {
-    audioManager.playUiClick();
-    document.getElementById('settings-overlay').style.display = 'flex';
-    
-    // Sync UI with current settings
-    document.getElementById('music-volume-slider').value = audioManager.musicVolume;
-    document.getElementById('sfx-volume-slider').value = audioManager.sfxVolume;
-    document.getElementById('free-cam-checkbox').checked = isFreeCamera;
-    
-    // Sync keybinds UI
-    document.querySelectorAll('.key-bind-btn').forEach(btn => {
-        const action = btn.getAttribute('data-action');
-        btn.innerText = keyBinds[action];
-    });
 };
 
 // Key Rebinding Logic
@@ -3496,11 +3573,6 @@ document.querySelectorAll('.key-bind-btn').forEach(btn => {
         window.addEventListener('keydown', onBindKey);
     };
 });
-
-document.getElementById('close-settings-btn').onclick = () => {
-    audioManager.playUiClick();
-    document.getElementById('settings-overlay').style.display = 'none';
-};
 
 document.getElementById('music-volume-slider').oninput = (e) => {
     audioManager.setMusicVolume(parseFloat(e.target.value));
@@ -3558,19 +3630,6 @@ swipeArea.addEventListener('touchend', () => {
     swipeCameraVelocity.set(0, 0);
     touchMoved = false;
 }, { passive: true });
-
-document.getElementById('fullscreen-checkbox').onchange = (e) => {
-    audioManager.playUiClick();
-    if (e.target.checked) {
-        if (document.documentElement.requestFullscreen) {
-            document.documentElement.requestFullscreen();
-        }
-    } else {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        }
-    }
-};
 
 document.getElementById('lang-select').onchange = (e) => {
     setLanguage(e.target.value);
@@ -3812,22 +3871,16 @@ const Consent = {
         document.getElementById('consent-overlay').style.display = 'none';
         
         // Unlock menu buttons
-        const spBtn = document.getElementById('singleplayer-btn');
-        if (spBtn) {
-            spBtn.disabled = false;
-            spBtn.title = "";
+        const startBtn = document.getElementById('start-btn');
+        if (startBtn) {
+            startBtn.disabled = false;
+            startBtn.title = "";
         }
         const shopBtn = document.getElementById('shop-btn');
         if (shopBtn) {
             shopBtn.disabled = false;
             shopBtn.title = "";
         }
-        const mpBtn = document.getElementById('multiplayer-btn');
-        if (mpBtn) mpBtn.disabled = false;
-        const accBtn = document.getElementById('account-btn');
-        if (accBtn) accBtn.disabled = false;
-        const setBtn = document.getElementById('main-settings-btn');
-        if (setBtn) setBtn.disabled = false;
         
         // Clear cached language for fresh detection
         Security.save('snake3d_lang_cache', null);
@@ -3845,14 +3898,9 @@ document.getElementById('accept-consent-btn').onclick = () => {
 if (Consent.check()) {
     detectLanguage();
     ModManager.loadMods();
-} else {
-    // Lock menu buttons if consent is not verified
-    const lockIds = ['singleplayer-btn', 'multiplayer-btn', 'shop-btn', 'main-settings-btn', 'account-btn'];
-    lockIds.forEach(id => {
-        const btn = document.getElementById(id);
-        if (btn) {
-            btn.disabled = true;
-            btn.title = "Please accept Terms of Service first";
-        }
-    });
+    // If loading is already done, show menu
+    if (loadingOverlay.style.display === 'none') {
+        MainMenuManager.init();
+        MainMenuManager.show();
+    }
 }

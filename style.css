@@ -133,220 +133,239 @@ body {
     width: 100%;
     height: 100%;
     height: 100dvh;
-    background: rgba(0,0,0,0.8);
+    background: radial-gradient(circle, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.9) 100%);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 200;
 }
 
-#menu {
-    text-align: center;
-    background: #222;
-    padding: 2rem;
-    border-radius: 10px;
-    border: 2px solid #00ff00;
-    max-height: 90vh;
-    max-height: 90dvh;
-    overflow-y: auto;
-}
-
-.menu-buttons {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    margin-top: 1rem;
-    flex-wrap: wrap;
-}
-
-#shop-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
+.main-menu {
     width: 100%;
-    height: 100%;
-    height: 100dvh;
-    background: rgba(0,0,0,0.9);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 300;
-}
-
-#shop {
-    width: 90%;
-    max-width: 800px;
-    background: #111;
-    padding: 1.5rem;
-    border-radius: 15px;
-    border: 2px solid #00ff00;
-    text-align: center;
+    max-width: 600px;
+    padding: 2rem;
+    text-align: left;
     display: flex;
     flex-direction: column;
-    max-height: 90vh;
-    max-height: 90dvh;
+    gap: 2rem;
+    animation: menuFadeIn 0.8s ease-out;
 }
 
-#shop-content {
-    overflow-y: auto;
-    flex-grow: 1;
-    margin: 1rem 0;
+@keyframes menuFadeIn {
+    from { opacity: 0; transform: translateX(-50px); }
+    to { opacity: 1; transform: translateX(0); }
 }
 
-.shop-footer {
+.menu-header {
+    margin-bottom: 1rem;
+}
+
+.glitch-text {
+    font-size: 4rem;
+    font-weight: 900;
+    margin: 0;
+    letter-spacing: 5px;
+    color: #fff;
+    text-shadow: 
+        3px 0 #00ffff, 
+        -3px 0 #ff00ff;
+    position: relative;
+    font-family: 'Arial Black', sans-serif;
+}
+
+.subtitle {
+    font-size: 0.9rem;
+    letter-spacing: 4px;
+    color: #00ff00;
+    margin-top: 0.5rem;
+    opacity: 0.8;
+    font-family: 'Courier New', monospace;
+}
+
+.menu-options {
     display: flex;
-    gap: 1rem;
-    justify-content: center;
-    margin-top: 1rem;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 0.8rem;
+    width: 320px;
 }
 
-.danger-btn {
-    background: rgba(255, 0, 0, 0.2);
-    border: 1px solid #ff0000;
-    color: #ff8888;
-    padding: 10px 20px;
-    border-radius: 5px;
+.menu-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 4px solid #333;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     cursor: pointer;
+    transition: all 0.3s;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.menu-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-left-color: #00ff00;
+    padding-left: 2rem;
+}
+
+.menu-item.danger:hover {
+    border-left-color: #ff0000;
+}
+
+.menu-item .label {
+    font-weight: bold;
+    letter-spacing: 2px;
+    font-size: 1.1rem;
+}
+
+.menu-item.danger .label {
+    color: #ff4444;
+}
+
+.menu-item .status {
+    color: #00ff00;
+    font-size: 0.7rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.menu-item .status-box {
+    background: rgba(0, 255, 0, 0.2);
+    border: 1px solid #00ff00;
+    color: #00ff00;
+    padding: 2px 8px;
+    font-size: 0.6rem;
+    border-radius: 3px;
+}
+
+.menu-item.locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.menu-item.locked:hover {
+    padding-left: 1.5rem;
+    border-left-color: #333;
+}
+
+.menu-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #aaa;
+}
+
+.shop-trigger {
+    background: none;
+    border: 1px solid #00ff00;
+    color: #00ff00;
+    padding: 8px 15px;
+    width: fit-content;
+    cursor: pointer;
+    margin-top: 10px;
     transition: all 0.2s;
 }
 
-.danger-btn:hover {
-    background: rgba(255, 0, 0, 0.4);
-    transform: scale(1.05);
+.shop-trigger:hover {
+    background: rgba(0, 255, 0, 0.2);
 }
 
-#mod-picker-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    height: 100dvh;
-    background: rgba(0,0,0,0.9);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 400;
-}
-
-#mod-picker {
-    width: 90%;
-    max-width: 600px;
-    background: #111;
-    padding: 1.5rem;
-    border-radius: 15px;
+/* Modal Enhancements */
+.cyber-modal {
+    background: rgba(10, 10, 10, 0.95);
     border: 2px solid #00ff00;
-    text-align: center;
-    max-height: 90dvh;
-    overflow-y: auto;
-}
-
-#mod-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    max-height: 400px;
-    overflow-y: auto;
-    margin: 1rem 0;
-}
-
-.security-warning {
-    background: rgba(255, 68, 68, 0.1);
-    border: 1px solid #ff4444;
-    color: #ff8888;
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 1rem;
-    font-size: 0.85rem;
-    text-align: left;
-    line-height: 1.4;
-}
-
-/* Consent Modal Styles */
-#consent-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    height: 100dvh;
-    background: rgba(0, 0, 0, 0.95);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 2000;
-}
-
-#consent-modal {
-    background: #222;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
     padding: 2.5rem;
-    border-radius: 15px;
-    border: 2px solid #00ff00;
-    max-width: 500px;
-    text-align: center;
-    box-shadow: 0 0 30px rgba(0, 255, 0, 0.2);
-    max-height: 90dvh;
-    overflow-y: auto;
-}
-
-.consent-options {
-    margin: 1.5rem 0;
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
+    border-radius: 0;
     text-align: left;
+    max-width: 450px;
+    width: 90%;
+    backdrop-filter: blur(10px);
 }
 
-.consent-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    font-size: 0.95rem;
-    color: #eee;
-    user-select: none;
+.cyber-modal h2 {
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
 }
 
-.consent-checkbox input {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-    accent-color: #00ff00;
-}
-
-.small-text-muted {
-    font-size: 0.75rem;
+.modal-desc {
     color: #888;
-    margin-top: 8px;
-    margin-bottom: 0;
-    line-height: 1.3;
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+    text-align: center;
 }
 
-.small-text {
-    font-size: 0.8rem;
-    color: #aaa;
-    margin-top: 1rem;
+.input-group {
+    margin-bottom: 1.5rem;
 }
 
-.small-text a {
+.input-group label {
+    display: block;
     color: #00ff00;
-    text-decoration: none;
+    font-size: 0.7rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    margin-bottom: 0.5rem;
 }
 
-.small-text a:hover {
-    text-decoration: underline;
+.input-group input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid #333;
+    padding: 0.8rem;
+    color: #fff;
+    outline: none;
+    box-sizing: border-box;
 }
 
+.input-group input:focus {
+    border-color: #00ff00;
+}
 
-#settings-overlay {
+.cyber-btn {
+    background: none;
+    border: 1px solid #00ff00;
+    color: #00ff00;
+    padding: 10px 20px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex: 1;
+}
+
+.cyber-btn:hover {
+    background: rgba(0, 255, 0, 0.1);
+}
+
+.cyber-btn.secondary {
+    border-color: #444;
+    color: #888;
+}
+
+.cyber-btn.secondary:hover {
+    border-color: #888;
+    color: #fff;
+}
+
+.status-msg {
+    text-align: center;
+    font-size: 0.7rem;
+    color: #ff4444;
+    margin: 1.5rem 0;
+    letter-spacing: 1px;
+}
+
+#account-overlay, #settings-overlay {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    height: 100dvh;
-    background: rgba(0, 0, 0, 0.9);
+    background: rgba(0,0,0,0.8);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -354,20 +373,11 @@ body {
 }
 
 #settings-modal {
-    background: #1a1a1a;
-    padding: 2rem;
-    border-radius: 15px;
-    border: 2px solid #00ff00;
-    width: 90%;
     max-width: 400px;
-    text-align: center;
-    max-height: 90dvh;
-    overflow-y: auto;
 }
 
 .setting-item {
-    margin: 1.5rem 0;
-    text-align: left;
+    margin-bottom: 2rem;
 }
 
 .setting-item label {
@@ -733,106 +743,6 @@ h1 {
 
 p {
     margin: 5px 0;
-}
-
-#account-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    height: 100dvh;
-    background: rgba(0, 0, 0, 0.9);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 2200;
-}
-
-#account-modal {
-    background: #1a1a1a;
-    padding: 2rem;
-    border-radius: 15px;
-    border: 2px solid #00ff00;
-    width: 90%;
-    max-width: 400px;
-    text-align: center;
-    max-height: 90dvh;
-    overflow-y: auto;
-}
-
-.placeholder-msg {
-    background: rgba(0, 255, 0, 0.1);
-    border: 1px solid #00ff00;
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 1.5rem;
-    font-size: 0.9rem;
-    color: #00ff00;
-}
-
-.input-group {
-    margin-bottom: 1.2rem;
-    text-align: left;
-}
-
-.input-group label {
-    display: block;
-    margin-bottom: 0.4rem;
-    color: #00ff00;
-    font-size: 0.9rem;
-    font-weight: bold;
-}
-
-.input-group input {
-    width: 100%;
-    padding: 10px;
-    background: #222;
-    border: 1px solid #444;
-    border-radius: 5px;
-    color: #fff;
-    box-sizing: border-box;
-}
-
-.input-group input:focus {
-    border-color: #00ff00;
-    outline: none;
-}
-
-.primary-btn {
-    background: #00ff00;
-    color: #000;
-    font-weight: bold;
-}
-
-/* 3D Menu Button Styles */
-.menu-buttons button {
-    position: relative;
-    transform-style: preserve-3d;
-    transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
-    box-shadow: 0 4px 0 #008800;
-}
-
-.menu-buttons button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 0 #008800;
-}
-
-.menu-buttons button:active {
-    transform: translateY(2px);
-    box-shadow: 0 2px 0 #008800;
-}
-
-#overlay #menu {
-    perspective: 1000px;
-    transform: rotateX(5deg);
-    box-shadow: 0 20px 50px rgba(0, 255, 0, 0.1);
-}
-
-.legal-footer {
-    margin-top: 1.5rem;
-    font-size: 0.8rem;
-    color: #666;
 }
 
 /* Mobile Optimizations */
