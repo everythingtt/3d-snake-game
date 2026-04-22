@@ -3675,39 +3675,55 @@ const MenuManager = {
         // Create a cool snake for the menu
         const snakeGroup = new THREE.Group();
         const colors = [0x00ffff, 0x00cccc, 0x00aaaa, 0x008888, 0x006666];
-        for (let i = 0; i < 20; i++) {
-            const geom = new THREE.BoxGeometry(1.2, 1.2, 1.2);
+        for (let i = 0; i < 25; i++) {
+            const geom = new THREE.BoxGeometry(1.5, 1.5, 1.5);
             const mat = new THREE.MeshPhongMaterial({ 
                 color: colors[i % colors.length],
                 emissive: colors[i % colors.length],
-                emissiveIntensity: 0.6,
+                emissiveIntensity: 0.8,
                 transparent: true,
-                opacity: 1 - (i * 0.04)
+                opacity: 1 - (i * 0.03)
             });
             const mesh = new THREE.Mesh(geom, mat);
-            mesh.position.set(0, 0, -i * 1.3);
+            mesh.position.set(0, 0, -i * 1.5);
             snakeGroup.add(mesh);
         }
         menuSnake = snakeGroup;
         menuDecorativeGroup.add(menuSnake);
         
-        // Add some floating rings for extra 3D flair
-        for (let i = 0; i < 3; i++) {
-            const ringGeom = new THREE.TorusGeometry(8 + i * 4, 0.1, 16, 100);
-            const ringMat = new THREE.MeshBasicMaterial({ 
+        // Floating "Data Cubes" for a more digital vibe
+        for (let i = 0; i < 30; i++) {
+            const size = Math.random() * 0.5 + 0.2;
+            const cubeGeom = new THREE.BoxGeometry(size, size, size);
+            const cubeMat = new THREE.MeshPhongMaterial({ 
                 color: 0x00ff00, 
-                transparent: true, 
-                opacity: 0.2 
+                emissive: 0x00ff00,
+                emissiveIntensity: 0.5,
+                transparent: true,
+                opacity: 0.4
             });
-            const ring = new THREE.Mesh(ringGeom, ringMat);
-            ring.rotation.x = Math.PI / 2;
-            menuDecorativeGroup.add(ring);
+            const cube = new THREE.Mesh(cubeGeom, cubeMat);
+            cube.position.set(
+                (Math.random() - 0.5) * 60,
+                (Math.random() - 0.5) * 40,
+                (Math.random() - 0.5) * 60
+            );
+            cube.userData = { 
+                rotSpeed: Math.random() * 0.02,
+                floatSpeed: Math.random() * 0.01
+            };
+            menuDecorativeGroup.add(cube);
         }
+
+        // Animated "Grid Floor" for the menu
+        const menuGrid = new THREE.GridHelper(200, 40, 0x00ff00, 0x002200);
+        menuGrid.position.y = -20;
+        menuDecorativeGroup.add(menuGrid);
 
         scene.add(menuDecorativeGroup);
         
         // Distant Cinematic Camera position
-        camera.position.set(-40, 20, 60);
+        camera.position.set(-60, 30, 80);
         camera.lookAt(0, 0, 0);
         controls.enabled = false;
         
@@ -3778,6 +3794,14 @@ function animate() {
          }
          if (menuDecorativeGroup) {
              menuDecorativeGroup.children.forEach((child, idx) => {
+                 if (child.geometry && child.geometry.type === 'BoxGeometry' && child !== menuSnake) {
+                     // Animate floating data cubes
+                     if (child.userData.rotSpeed) {
+                         child.rotation.x += child.userData.rotSpeed;
+                         child.rotation.y += child.userData.rotSpeed;
+                     }
+                     child.position.y += Math.sin(Date.now() * 0.001 + idx) * 0.05;
+                 }
                  if (child.geometry && child.geometry.type === 'TorusGeometry') {
                      child.rotation.z += 0.002 * (idx + 1);
                      child.rotation.y += 0.001 * (idx + 1);
