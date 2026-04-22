@@ -498,7 +498,7 @@ body {
 
 #touch-controls {
     position: absolute;
-    bottom: 5dvh;
+    bottom: 2dvh;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
@@ -1001,7 +1001,7 @@ p {
     }
 
     #touch-controls {
-        bottom: 20px;
+        bottom: 8px;
         gap: 5px;
     }
 
