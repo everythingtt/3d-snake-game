@@ -96,71 +96,88 @@
             <p id="loading-status">Initializing Starfield...</p>
         </div>
     </div>
-    <div id="overlay">
-        <div id="menu" class="main-menu">
-            <div class="menu-header">
-                <h1 class="glitch-text">SNAKE 3000</h1>
+    <div id="main-menu-overlay" style="display: none;">
+        <div id="main-menu">
+            <div class="menu-title-container">
+                <h1 class="glitch-text" data-text="SNAKE 3000">SNAKE 3000</h1>
                 <p class="subtitle">CYBERNETIC ARCADE EXPERIENCE</p>
             </div>
-            
-            <div class="menu-options">
-                <div class="menu-item" id="singleplayer-btn">
-                    <span class="label">SINGLEPLAYER</span>
-                    <span class="status">RUN</span>
-                </div>
-                <div class="menu-item locked" id="multiplayer-btn">
-                    <span class="label">MULTIPLAYER</span>
-                    <span class="status-box">LOCKED</span>
-                </div>
-                <div class="menu-item" id="open-settings-btn">
-                    <span class="label">SETTINGS</span>
-                </div>
-                <div class="menu-item" id="account-btn">
-                    <span class="label">ACCOUNT</span>
-                </div>
-                <div class="menu-item danger" id="exit-btn">
-                    <span class="label">EXIT</span>
-                </div>
-            </div>
-
-            <div class="menu-footer">
-                <div id="high-score-display"><span data-t="high">High Score</span>: <span id="menu-high-score">0</span></div>
-                <div id="coin-display"><span data-t="coins">Coins</span>: <span id="menu-coins">0</span></div>
-                <button id="shop-btn" data-t="open_shop" class="shop-trigger">Open Shop</button>
-            </div>
-
-            <div class="legal-footer">
-                <a href="legal/TERMS.md" target="_blank">Terms</a> | 
-                <a href="legal/PRIVACY.md" target="_blank">Privacy</a> | 
-                <a href="legal/COOKIES.md" target="_blank">Cookies</a>
+            <div class="main-menu-buttons">
+                <button id="main-singleplayer-btn" class="menu-nav-btn">
+                    <span class="btn-text">SINGLEPLAYER</span>
+                    <span class="btn-status">RUN</span>
+                </button>
+                <button id="main-multiplayer-btn" class="menu-nav-btn locked">
+                    <span class="btn-text">MULTIPLAYER</span>
+                    <span class="btn-status">LOCKED</span>
+                </button>
+                <button id="main-settings-btn" class="menu-nav-btn">
+                    <span class="btn-text">SETTINGS</span>
+                </button>
+                <button id="main-account-btn" class="menu-nav-btn">
+                    <span class="btn-text">ACCOUNT</span>
+                </button>
+                <button id="main-exit-btn" class="menu-nav-btn danger">
+                    <span class="btn-text">EXIT</span>
+                </button>
             </div>
         </div>
     </div>
 
-    <div id="account-overlay" style="display: none;">
-        <div id="account-modal" class="cyber-modal">
-            <h2 class="glitch-text">USER ACCOUNT</h2>
-            <p class="modal-desc">Connect to the cyber-grid for future multiplayer events.</p>
-            
-            <div class="input-group">
-                <label>CYBER-NAME</label>
-                <input type="text" id="username-input" placeholder="Enter username...">
+    <!-- New 3D Modals -->
+    <div id="main-settings-modal" class="modal-3d" style="display: none;">
+        <div class="modal-content">
+            <h2>SETTINGS</h2>
+            <div class="setting-item">
+                <label>Fullscreen</label>
+                <button id="fullscreen-toggle" class="toggle-btn">OFF</button>
             </div>
-            
-            <div class="input-group">
-                <label>ACCESS-KEY</label>
-                <input type="password" id="password-input" placeholder="Enter password...">
+            <div class="setting-item">
+                <label>Music Volume</label>
+                <input type="range" id="main-music-slider" min="0" max="1" step="0.01">
             </div>
+            <div class="setting-item">
+                <label>SFX Volume</label>
+                <input type="range" id="main-sfx-slider" min="0" max="1" step="0.01">
+            </div>
+            <button class="close-modal-btn">BACK</button>
+        </div>
+    </div>
 
-            <div class="menu-buttons">
-                <button id="login-btn" class="cyber-btn">LOGIN</button>
-                <button id="register-btn" class="cyber-btn">CREATE ACCOUNT</button>
+    <div id="main-account-modal" class="modal-3d" style="display: none;">
+        <div class="modal-content">
+            <h2>ACCOUNT</h2>
+            <div class="placeholder-notice">
+                <p>Multiplayer events coming soon!</p>
+                <p class="small">Create an account to track stats and compete globally.</p>
             </div>
-            
-            <p class="status-msg">Multiplayer services currently OFFLINE.</p>
-            
+            <div class="input-group">
+                <input type="text" placeholder="Username" id="acc-username">
+                <input type="password" placeholder="Password" id="acc-password">
+            </div>
             <div class="menu-buttons">
-                <button id="close-account-btn" class="cyber-btn secondary">BACK</button>
+                <button id="acc-login-btn">LOGIN</button>
+                <button id="acc-create-btn">CREATE</button>
+            </div>
+            <button class="close-modal-btn">BACK</button>
+        </div>
+    </div>
+
+    <div id="overlay">
+        <div id="menu">
+            <h1 data-t="game_title">3D Snake</h1>
+            <p data-t="space_journey">Space Journey</p>
+            <div id="high-score-display"><span data-t="high">High Score</span>: <span id="menu-high-score">0</span></div>
+            <div id="coin-display"><span data-t="coins">Coins</span>: <span id="menu-coins">0</span></div>
+            <div class="menu-buttons">
+                <button id="start-btn" data-t="start_game">Start Game</button>
+                <button id="shop-btn" data-t="open_shop">Open Shop</button>
+            </div>
+            <div class="legal-footer">
+                <a href="legal/TERMS.md" target="_blank">Terms</a> | 
+                <a href="legal/PRIVACY.md" target="_blank">Privacy</a> | 
+                <a href="legal/COOKIES.md" target="_blank">Cookies</a> |
+                <a href="legal/MODDING_GUIDELINES.md" target="_blank">Themes</a>
             </div>
         </div>
     </div>
@@ -227,8 +244,8 @@
         </div>
     </div>
     <div id="settings-overlay" style="display: none;">
-        <div id="settings-modal" class="cyber-modal">
-            <h2 class="glitch-text">SYSTEM SETTINGS</h2>
+        <div id="settings-modal">
+            <h2 data-t="settings">Settings</h2>
             
             <div class="setting-item">
                 <label data-t="music_volume">Music Volume</label>
@@ -242,18 +259,11 @@
 
             <div class="setting-item">
                 <label class="consent-checkbox">
-                    <input type="checkbox" id="fullscreen-checkbox">
-                    <span class="checkmark"></span>
-                    <span>Fullscreen Mode</span>
-                </label>
-            </div>
-
-            <div class="setting-item">
-                <label class="consent-checkbox">
                     <input type="checkbox" id="free-cam-checkbox">
                     <span class="checkmark"></span>
                     <span data-t="free_camera">Free Camera Mode</span>
                 </label>
+                <p class="small-text-muted">Disable trailing camera for manual control.</p>
             </div>
 
             <div class="setting-item">

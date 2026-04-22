@@ -2140,167 +2140,12 @@ loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
     if (loadingStatus) loadingStatus.innerText = `Downloading: ${url.split('/').pop()}...`;
 };
 
-// Main Menu Manager
-const MainMenuManager = {
-    init() {
-        // Setup 3D Menu Background
-        this.setupBackground();
-        
-        // Add listeners for menu options
-        document.getElementById('singleplayer-btn').onclick = () => {
-            audioManager.playUiClick();
-            this.hide();
-            gameStarted = true;
-            updateBackground();
-            initGame();
-        };
-
-        document.getElementById('multiplayer-btn').onclick = () => {
-            audioManager.playErrorSound();
-            Notifications.show("Multiplayer mode is currently LOCKED. Stay tuned for future updates!", "warning");
-        };
-
-        document.getElementById('open-settings-btn').onclick = () => {
-            audioManager.playUiClick();
-            document.getElementById('settings-overlay').style.display = 'flex';
-            this.syncSettingsUI();
-        };
-
-        document.getElementById('account-btn').onclick = () => {
-            audioManager.playUiClick();
-            document.getElementById('account-overlay').style.display = 'flex';
-        };
-
-        document.getElementById('exit-btn').onclick = () => {
-            audioManager.playUiClick();
-            if (confirm("Are you sure you want to exit?")) {
-                window.close();
-                // Fallback if window.close() is blocked
-                setTimeout(() => {
-                    window.location.href = "about:blank";
-                }, 500);
-            }
-        };
-
-        // Modal close buttons
-        document.getElementById('close-account-btn').onclick = () => {
-            audioManager.playUiClick();
-            document.getElementById('account-overlay').style.display = 'none';
-        };
-
-        // Account placeholder actions
-        document.getElementById('login-btn').onclick = () => {
-            audioManager.playErrorSound();
-            Notifications.show("Login failed: Authentication servers OFFLINE.", "error");
-        };
-
-        document.getElementById('register-btn').onclick = () => {
-            audioManager.playErrorSound();
-            Notifications.show("Registration failed: Cyber-grid connection error.", "error");
-        };
-
-        // Fullscreen toggle
-        document.getElementById('fullscreen-checkbox').onchange = (e) => {
-            audioManager.playUiClick();
-            if (e.target.checked) {
-                if (document.documentElement.requestFullscreen) {
-                    document.documentElement.requestFullscreen();
-                }
-            } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                }
-            }
-        };
-
-        // Sync initial fullscreen state
-        document.addEventListener('fullscreenchange', () => {
-            document.getElementById('fullscreen-checkbox').checked = !!document.fullscreenElement;
-        });
-    },
-
-    setupBackground() {
-        // Use a cool 3D background for the menu
-        currentBgId = 'neon'; // Default cool background for menu
-        updateBackground();
-        
-        // Position camera for cinematic menu look
-        camera.position.set(20, 15, 20);
-        camera.lookAt(0, 0, 0);
-        controls.autoRotate = true;
-        controls.autoRotateSpeed = 0.5;
-        
-        // Add a "dummy" snake for the menu background
-        this.createMenuSnake();
-    },
-
-    createMenuSnake() {
-        // Clear any existing dummy snake
-        if (this.dummySnake) {
-            this.dummySnake.forEach(seg => scene.remove(seg.mesh));
-        }
-        this.dummySnake = [];
-        const materials = getSkinMaterials('matrix');
-        for (let i = 0; i < 15; i++) {
-            const mesh = new THREE.Mesh(cubeGeometry, i === 0 ? materials.head : materials.body);
-            mesh.position.set(-i + 10, 0.5, -10);
-            scene.add(mesh);
-            this.dummySnake.push({ mesh });
-        }
-    },
-
-    syncSettingsUI() {
-        document.getElementById('music-volume-slider').value = audioManager.musicVolume;
-        document.getElementById('sfx-volume-slider').value = audioManager.sfxVolume;
-        document.getElementById('free-cam-checkbox').checked = isFreeCamera;
-        document.getElementById('fullscreen-checkbox').checked = !!document.fullscreenElement;
-        
-        document.querySelectorAll('.key-bind-btn').forEach(btn => {
-            const action = btn.getAttribute('data-action');
-            btn.innerText = keyBinds[action];
-        });
-    },
-
-    show() {
-        document.getElementById('overlay').style.display = 'flex';
-        controls.autoRotate = true;
-        gameStarted = false;
-        audioManager.updateMusicTheme('neon');
-    },
-
-    hide() {
-        document.getElementById('overlay').style.display = 'none';
-        controls.autoRotate = false;
-        if (this.dummySnake) {
-            this.dummySnake.forEach(seg => scene.remove(seg.mesh));
-            this.dummySnake = null;
-        }
-    }
-};
-
-// Update existing Consent accept to show Main Menu
-const originalConsentAccept = Consent.accept;
-Consent.accept = function() {
-    originalConsentAccept.apply(this);
-    MainMenuManager.init();
-    MainMenuManager.show();
-};
-
-// Update LoadingManager onLoad to show Consent or Menu
 loadingManager.onLoad = () => {
     if (loadingStatus) loadingStatus.innerText = "System Ready. Initializing Simulation...";
     setTimeout(() => {
         if (loadingOverlay) {
             loadingOverlay.style.opacity = '0';
-            setTimeout(() => {
-                loadingOverlay.style.display = 'none';
-                if (Consent.check()) {
-                    MainMenuManager.init();
-                    MainMenuManager.show();
-                    detectLanguage();
-                    ModManager.loadMods();
-                }
-            }, 500);
+            setTimeout(() => loadingOverlay.style.display = 'none', 500);
         }
     }, 500);
 };
@@ -3054,7 +2899,9 @@ function endGame(reason = null) {
     
     updateUI();
     setTimeout(() => {
-        MainMenuManager.show();
+        document.getElementById('overlay').style.display = 'flex';
+        gameStarted = false;
+        cheaterDetected = false; // Reset for next run
     }, 1000);
 }
 
@@ -3539,6 +3386,21 @@ document.getElementById('close-shop-btn').onclick = () => {
     document.getElementById('shop-overlay').style.display = 'none';
 };
 
+document.getElementById('reset-data-btn').onclick = () => {
+    audioManager.playUiClick();
+    Security.resetData();
+};
+
+document.getElementById('start-btn').onclick = () => {
+    audioManager.playUiClick();
+    document.getElementById('overlay').style.display = 'none';
+    audioManager.init();
+    audioManager.updateMusicTheme(currentBgId); // Start themed music
+    gameStarted = true;
+    updateBackground(); // Ensure background is correct for game start
+    initGame();
+};
+
 document.getElementById('mute-btn').onclick = () => {
     audioManager.init();
     audioManager.isMuted = !audioManager.isMuted;
@@ -3546,6 +3408,22 @@ document.getElementById('mute-btn').onclick = () => {
     Security.save('snake3d_muted', audioManager.isMuted);
     document.getElementById('mute-btn').innerText = audioManager.isMuted ? '🔇' : '🔊';
     audioManager.playUiClick();
+};
+
+document.getElementById('settings-btn').onclick = () => {
+    audioManager.playUiClick();
+    document.getElementById('settings-overlay').style.display = 'flex';
+    
+    // Sync UI with current settings
+    document.getElementById('music-volume-slider').value = audioManager.musicVolume;
+    document.getElementById('sfx-volume-slider').value = audioManager.sfxVolume;
+    document.getElementById('free-cam-checkbox').checked = isFreeCamera;
+    
+    // Sync keybinds UI
+    document.querySelectorAll('.key-bind-btn').forEach(btn => {
+        const action = btn.getAttribute('data-action');
+        btn.innerText = keyBinds[action];
+    });
 };
 
 // Key Rebinding Logic
@@ -3573,6 +3451,11 @@ document.querySelectorAll('.key-bind-btn').forEach(btn => {
         window.addEventListener('keydown', onBindKey);
     };
 });
+
+document.getElementById('close-settings-btn').onclick = () => {
+    audioManager.playUiClick();
+    document.getElementById('settings-overlay').style.display = 'none';
+};
 
 document.getElementById('music-volume-slider').oninput = (e) => {
     audioManager.setMusicVolume(parseFloat(e.target.value));
@@ -3722,8 +3605,141 @@ function onKeyUp(event) {
     keysPressed[event.key.toLowerCase()] = false;
 }
 
+let isMainMenu = true;
+let menuSnake = null;
+let menuTargetRotation = 0;
+
+// Main Menu Manager
+const MenuManager = {
+    init() {
+        this.setupEventListeners();
+        this.createMenuScene();
+        this.showMenu();
+    },
+
+    setupEventListeners() {
+        document.getElementById('main-singleplayer-btn').onclick = () => this.startSinglePlayer();
+        document.getElementById('main-settings-btn').onclick = () => this.toggleModal('main-settings-modal', true);
+        document.getElementById('main-account-btn').onclick = () => this.toggleModal('main-account-modal', true);
+        document.getElementById('main-exit-btn').onclick = () => window.close();
+        
+        document.querySelectorAll('.close-modal-btn').forEach(btn => {
+            btn.onclick = (e) => this.toggleModal(e.target.closest('.modal-3d').id, false);
+        });
+
+        // Settings logic
+        document.getElementById('fullscreen-toggle').onclick = (e) => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+                e.target.innerText = 'ON';
+                e.target.classList.add('on');
+            } else {
+                document.exitFullscreen();
+                e.target.innerText = 'OFF';
+                e.target.classList.remove('on');
+            }
+        };
+
+        const musicSlider = document.getElementById('main-music-slider');
+        const sfxSlider = document.getElementById('main-sfx-slider');
+        
+        musicSlider.value = audioManager.musicVolume;
+        sfxSlider.value = audioManager.sfxVolume;
+
+        musicSlider.oninput = (e) => audioManager.setMusicVolume(parseFloat(e.target.value));
+        sfxSlider.oninput = (e) => audioManager.setSfxVolume(parseFloat(e.target.value));
+    },
+
+    createMenuScene() {
+        // Create a cool snake for the menu
+        const group = new THREE.Group();
+        const colors = [0x00ffff, 0x00cccc, 0x00aaaa, 0x008888, 0x006666];
+        for (let i = 0; i < 15; i++) {
+            const geom = new THREE.BoxGeometry(1, 1, 1);
+            const mat = new THREE.MeshPhongMaterial({ 
+                color: colors[i % colors.length],
+                emissive: colors[i % colors.length],
+                emissiveIntensity: 0.5
+            });
+            const mesh = new THREE.Mesh(geom, mat);
+            mesh.position.set(0, 0, -i * 1.1);
+            group.add(mesh);
+        }
+        menuSnake = group;
+        scene.add(menuSnake);
+        
+        // Initial menu camera position
+        camera.position.set(-15, 5, 10);
+        camera.lookAt(0, 0, 0);
+        controls.enabled = false;
+        
+        // Setup Neon City for menu background
+        currentBgId = 'neon';
+        updateBackground();
+    },
+
+    showMenu() {
+        document.getElementById('main-menu-overlay').style.display = 'flex';
+        isMainMenu = true;
+    },
+
+    toggleModal(id, show) {
+        audioManager.playUiClick();
+        document.getElementById(id).style.display = show ? 'flex' : 'none';
+    },
+
+    async startSinglePlayer() {
+        audioManager.playUiClick();
+        document.getElementById('main-menu-overlay').style.display = 'none';
+        
+        // Cinematic Transition
+        const duration = 2000;
+        const startPos = camera.position.clone();
+        const endPos = new THREE.Vector3(0, 10, 20);
+        const startTime = Date.now();
+
+        const animateTransition = () => {
+            const now = Date.now();
+            const p = Math.min(1, (now - startTime) / duration);
+            const easeP = p * p * (3 - 2 * p); // Smoothstep
+
+            camera.position.lerpVectors(startPos, endPos, easeP);
+            camera.lookAt(0, 0, 0);
+
+            if (p < 1) {
+                requestAnimationFrame(animateTransition);
+            } else {
+                this.finishTransition();
+            }
+        };
+
+        animateTransition();
+    },
+
+    finishTransition() {
+        isMainMenu = false;
+        scene.remove(menuSnake);
+        controls.enabled = true;
+        document.getElementById('overlay').style.display = 'flex';
+        audioManager.init();
+        audioManager.updateMusicTheme(currentBgId);
+    }
+};
+
 function animate() {
      requestAnimationFrame(animate);
+     
+     if (isMainMenu) {
+         // Menu animations
+         if (menuSnake) {
+             menuSnake.rotation.y += 0.005;
+             menuSnake.position.y = Math.sin(Date.now() * 0.001) * 2;
+         }
+         animateDecorativeObjects(decorativeObjects);
+         renderer.render(scene, camera);
+         return;
+     }
+
      update();
      updateParticles();
      animateDecorativeObjects(decorativeObjects);
@@ -3898,9 +3914,25 @@ document.getElementById('accept-consent-btn').onclick = () => {
 if (Consent.check()) {
     detectLanguage();
     ModManager.loadMods();
-    // If loading is already done, show menu
-    if (loadingOverlay.style.display === 'none') {
-        MainMenuManager.init();
-        MainMenuManager.show();
+    MenuManager.init();
+} else {
+    // Lock start button if consent is not verified
+    const startBtn = document.getElementById('start-btn');
+    if (startBtn) {
+        startBtn.disabled = true;
+        startBtn.title = "Please accept Terms of Service first";
     }
+    const shopBtn = document.getElementById('shop-btn');
+    if (shopBtn) {
+        shopBtn.disabled = true;
+        shopBtn.title = "Please accept Terms of Service first";
+    }
+    
+    // Also prevent menu initialization until consent
+    const acceptBtn = document.getElementById('accept-consent-btn');
+    const originalAccept = acceptBtn.onclick;
+    acceptBtn.onclick = () => {
+        originalAccept();
+        MenuManager.init();
+    };
 }
