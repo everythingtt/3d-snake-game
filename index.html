@@ -233,18 +233,20 @@
         <div id="account-modal">
             <h2 data-t="account">Account</h2>
             <p class="small-text-muted">Multiplayer features coming soon! Create a placeholder account for future events.</p>
-            <div class="setting-item">
-                <label>Username</label>
-                <input type="text" id="username-input" placeholder="Enter username">
-            </div>
-            <div class="setting-item">
-                <label>Password</label>
-                <input type="password" id="password-input" placeholder="Enter password">
-            </div>
-            <div class="menu-buttons">
-                <button id="account-login-btn">Login / Signup</button>
-                <button id="close-account-btn" data-t="back_to_menu">Back to Menu</button>
-            </div>
+            <form id="account-form" onsubmit="return false;">
+                <div class="setting-item">
+                    <label>Username</label>
+                    <input type="text" id="username-input" placeholder="Enter username" autocomplete="username">
+                </div>
+                <div class="setting-item">
+                    <label>Password</label>
+                    <input type="password" id="password-input" placeholder="Enter password" autocomplete="current-password">
+                </div>
+                <div class="menu-buttons">
+                    <button type="submit" id="account-login-btn">Login / Signup</button>
+                    <button type="button" id="close-account-btn" data-t="back_to_menu">Back to Menu</button>
+                </div>
+            </form>
         </div>
     </div>
 

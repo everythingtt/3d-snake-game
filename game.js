@@ -3688,6 +3688,7 @@ function animate() {
     controls.update();
     renderer.render(scene, camera);
 }
+}
 
 window.addEventListener('keydown', onKeyDown);
 window.addEventListener('keyup', onKeyUp);
