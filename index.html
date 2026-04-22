@@ -103,14 +103,39 @@
             <div id="high-score-display"><span data-t="high">High Score</span>: <span id="menu-high-score">0</span></div>
             <div id="coin-display"><span data-t="coins">Coins</span>: <span id="menu-coins">0</span></div>
             <div class="menu-buttons">
-                <button id="start-btn" data-t="start_game">Start Game</button>
+                <button id="singleplayer-btn" data-t="singleplayer">Singleplayer</button>
+                <button id="multiplayer-btn" data-t="multiplayer">Multiplayer</button>
                 <button id="shop-btn" data-t="open_shop">Open Shop</button>
+                <button id="main-settings-btn" data-t="settings">Settings</button>
+                <button id="account-btn" data-t="account">Account</button>
+                <button id="exit-btn" data-t="exit">Exit</button>
             </div>
             <div class="legal-footer">
                 <a href="legal/TERMS.md" target="_blank">Terms</a> | 
                 <a href="legal/PRIVACY.md" target="_blank">Privacy</a> | 
                 <a href="legal/COOKIES.md" target="_blank">Cookies</a> |
                 <a href="legal/MODDING_GUIDELINES.md" target="_blank">Themes</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="account-overlay" style="display: none;">
+        <div id="account-modal">
+            <h2 data-t="account">Account</h2>
+            <div class="placeholder-msg">
+                <p>Create an account to join multiplayer events in future updates!</p>
+            </div>
+            <div class="input-group">
+                <label>Username</label>
+                <input type="text" id="username-input" placeholder="Enter username">
+            </div>
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" id="password-input" placeholder="Enter password">
+            </div>
+            <div class="menu-buttons">
+                <button id="login-btn" class="primary-btn">Login / Register</button>
+                <button id="close-account-btn">Back to Menu</button>
             </div>
         </div>
     </div>
@@ -184,10 +209,10 @@
                 <label class="consent-checkbox">
                     <input type="checkbox" id="fullscreen-checkbox">
                     <span class="checkmark"></span>
-                    <span>Fullscreen Mode</span>
+                    <span data-t="fullscreen">Fullscreen</span>
                 </label>
             </div>
-
+            
             <div class="setting-item">
                 <label data-t="music_volume">Music Volume</label>
                 <input type="range" id="music-volume-slider" min="0" max="1" step="0.01" value="0.5">
@@ -226,27 +251,6 @@
             <div class="menu-buttons">
                 <button id="close-settings-btn" data-t="back_to_menu">Back to Menu</button>
             </div>
-        </div>
-    </div>
-
-    <div id="account-overlay" style="display: none;">
-        <div id="account-modal">
-            <h2 data-t="account">Account</h2>
-            <p class="small-text-muted">Multiplayer features coming soon! Create a placeholder account for future events.</p>
-            <form id="account-form" onsubmit="return false;">
-                <div class="setting-item">
-                    <label>Username</label>
-                    <input type="text" id="username-input" placeholder="Enter username" autocomplete="username">
-                </div>
-                <div class="setting-item">
-                    <label>Password</label>
-                    <input type="password" id="password-input" placeholder="Enter password" autocomplete="current-password">
-                </div>
-                <div class="menu-buttons">
-                    <button type="submit" id="account-login-btn">Login / Signup</button>
-                    <button type="button" id="close-account-btn" data-t="back_to_menu">Back to Menu</button>
-                </div>
-            </form>
         </div>
     </div>
 

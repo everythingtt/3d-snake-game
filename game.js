@@ -45,7 +45,11 @@ const TRANSLATIONS = {
         music_volume: "Music Volume",
         sfx_volume: "Sound Effects",
         free_camera: "Free Camera Mode",
-        game_won: "VICTORY! You have conquered the galaxy!"
+        game_won: "VICTORY! You have conquered the galaxy!",
+        singleplayer: "Singleplayer",
+        multiplayer: "Multiplayer",
+        account: "Account",
+        exit: "Exit"
     },
     ar: {
         game_title: "لعبة الثعبان ثلاثية الأبعاد",
@@ -1850,12 +1854,6 @@ let decorativeObjects = [];
 let cheaterDetected = false;
 let starfield = null;
 
-// 3D Menu state
-let menuScene, menuCamera, menuRenderer, menuButtons = [];
-let raycaster = new THREE.Raycaster();
-let mouse = new THREE.Vector2();
-let isMainMenuActive = false;
-
 // Mobile Swipe state
 let touchStartX = 0;
 let touchStartY = 0;
@@ -3397,7 +3395,7 @@ document.getElementById('reset-data-btn').onclick = () => {
     Security.resetData();
 };
 
-document.getElementById('start-btn').onclick = () => {
+document.getElementById('singleplayer-btn').onclick = () => {
     audioManager.playUiClick();
     document.getElementById('overlay').style.display = 'none';
     audioManager.init();
@@ -3405,6 +3403,47 @@ document.getElementById('start-btn').onclick = () => {
     gameStarted = true;
     updateBackground(); // Ensure background is correct for game start
     initGame();
+};
+
+document.getElementById('multiplayer-btn').onclick = () => {
+    audioManager.playUiClick();
+    Notifications.show("Multiplayer mode is coming soon!", "warning");
+};
+
+document.getElementById('main-settings-btn').onclick = () => {
+    document.getElementById('settings-btn').click();
+};
+
+document.getElementById('account-btn').onclick = () => {
+    audioManager.playUiClick();
+    document.getElementById('account-overlay').style.display = 'flex';
+};
+
+document.getElementById('close-account-btn').onclick = () => {
+    audioManager.playUiClick();
+    document.getElementById('account-overlay').style.display = 'none';
+};
+
+document.getElementById('exit-btn').onclick = () => {
+    audioManager.playUiClick();
+    if (confirm("Are you sure you want to exit the game?")) {
+        window.close();
+        // Fallback for browsers that block window.close
+        setTimeout(() => {
+            alert("To exit, please close this browser tab.");
+        }, 500);
+    }
+};
+
+document.getElementById('login-btn').onclick = () => {
+    audioManager.playUiClick();
+    const user = document.getElementById('username-input').value;
+    if (user) {
+        Notifications.show(`Welcome, ${user}! Account functionality is a placeholder.`, "warning");
+        document.getElementById('close-account-btn').click();
+    } else {
+        Notifications.show("Please enter a username.", "error");
+    }
 };
 
 document.getElementById('mute-btn').onclick = () => {
@@ -3489,11 +3528,6 @@ document.getElementById('free-cam-checkbox').onchange = (e) => {
     }
 };
 
-document.getElementById('fullscreen-checkbox').onchange = (e) => {
-    audioManager.playUiClick();
-    toggleFullscreen();
-};
-
 // Swipe Area Event Listeners for Mobile Free Camera
 const swipeArea = document.getElementById('camera-swipe-area');
 swipeArea.addEventListener('touchstart', (e) => {
@@ -3524,6 +3558,19 @@ swipeArea.addEventListener('touchend', () => {
     swipeCameraVelocity.set(0, 0);
     touchMoved = false;
 }, { passive: true });
+
+document.getElementById('fullscreen-checkbox').onchange = (e) => {
+    audioManager.playUiClick();
+    if (e.target.checked) {
+        if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen();
+        }
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
+};
 
 document.getElementById('lang-select').onchange = (e) => {
     setLanguage(e.target.value);
@@ -3618,23 +3665,11 @@ function onKeyUp(event) {
 
 function animate() {
      requestAnimationFrame(animate);
+     update();
+     updateParticles();
+     animateDecorativeObjects(decorativeObjects);
      
-     if (isMainMenuActive) {
-         animateDecorativeObjects(decorativeObjects);
-         // Subtle tilt based on mouse
-         camera.position.x = THREE.MathUtils.lerp(camera.position.x, mouse.x * 2, 0.05);
-         camera.position.y = THREE.MathUtils.lerp(camera.position.y, mouse.y * 2, 0.05);
-         camera.lookAt(0, 0, 0);
-         
-         menuButtons.forEach(btn => {
-             btn.rotation.y = Math.sin(Date.now() * 0.001) * 0.1;
-         });
-     } else {
-         update();
-         updateParticles();
-         animateDecorativeObjects(decorativeObjects);
-         
-         if (isFreeCamera) {
+     if (isFreeCamera) {
          // WASD movement for free camera
          const moveSpeed = 0.5;
          const forward = new THREE.Vector3();
@@ -3693,7 +3728,6 @@ function animate() {
     
     controls.update();
     renderer.render(scene, camera);
-}
 }
 
 window.addEventListener('keydown', onKeyDown);
@@ -3778,16 +3812,22 @@ const Consent = {
         document.getElementById('consent-overlay').style.display = 'none';
         
         // Unlock menu buttons
-        const startBtn = document.getElementById('start-btn');
-        if (startBtn) {
-            startBtn.disabled = false;
-            startBtn.title = "";
+        const spBtn = document.getElementById('singleplayer-btn');
+        if (spBtn) {
+            spBtn.disabled = false;
+            spBtn.title = "";
         }
         const shopBtn = document.getElementById('shop-btn');
         if (shopBtn) {
             shopBtn.disabled = false;
             shopBtn.title = "";
         }
+        const mpBtn = document.getElementById('multiplayer-btn');
+        if (mpBtn) mpBtn.disabled = false;
+        const accBtn = document.getElementById('account-btn');
+        if (accBtn) accBtn.disabled = false;
+        const setBtn = document.getElementById('main-settings-btn');
+        if (setBtn) setBtn.disabled = false;
         
         // Clear cached language for fresh detection
         Security.save('snake3d_lang_cache', null);
@@ -3801,205 +3841,18 @@ document.getElementById('accept-consent-btn').onclick = () => {
     Consent.accept();
 };
 
-function init3DMenu() {
-    isMainMenuActive = true;
-    document.getElementById('overlay').style.display = 'none'; // Hide the old overlay
-    
-    // Clear any existing game state if necessary
-    gameStarted = false;
-    
-    // We'll reuse the main renderer or create a separate one? 
-    // Let's use the main scene/camera but clear it for the menu.
-    scene.clear();
-    decorativeObjects = [];
-    particles = [];
-    
-    // Setup Menu Camera
-    camera.position.set(0, 0, 15);
-    camera.lookAt(0, 0, 0);
-    controls.enabled = false;
-
-    // Background for menu
-    currentBgId = 'space'; 
-    updateBackground();
-
-    // Create 3D Buttons
-    const buttonLabels = ['Singleplayer', 'Multiplayer', 'Settings', 'Account', 'Exit'];
-    menuButtons = [];
-
-    buttonLabels.forEach((label, i) => {
-        const geometry = new THREE.BoxGeometry(6, 1.2, 0.5);
-        const material = new THREE.MeshPhongMaterial({ color: 0x333333, emissive: 0x00ff00, emissiveIntensity: 0.1 });
-        const button = new THREE.Mesh(geometry, material);
-        button.position.y = 3 - i * 1.8;
-        button.userData = { action: label.toLowerCase() };
-        
-        // Add text label (using CanvasTexture for simplicity without extra font loaders)
-        const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 128;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#00ff00';
-        ctx.font = 'bold 60px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label, 256, 64);
-        
-        const texture = new THREE.CanvasTexture(canvas);
-        const labelMaterial = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-        const labelPlane = new THREE.Mesh(new THREE.PlaneGeometry(5, 1), labelMaterial);
-        labelPlane.position.z = 0.26;
-        button.add(labelPlane);
-
-        scene.add(button);
-        menuButtons.push(button);
-    });
-
-    // Add event listeners for 3D Menu
-    window.addEventListener('mousedown', onMenuClick);
-    window.addEventListener('mousemove', onMenuHover);
-}
-
-function onMenuHover(event) {
-    if (!isMainMenuActive) return;
-    
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(menuButtons);
-
-    menuButtons.forEach(btn => {
-        btn.material.emissiveIntensity = 0.1;
-        btn.scale.set(1, 1, 1);
-    });
-
-    if (intersects.length > 0) {
-        intersects[0].object.material.emissiveIntensity = 0.5;
-        intersects[0].object.scale.set(1.05, 1.05, 1.05);
-        document.body.style.cursor = 'pointer';
-    } else {
-        document.body.style.cursor = 'default';
-    }
-}
-
-function onMenuClick(event) {
-    if (!isMainMenuActive) return;
-
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(menuButtons);
-
-    if (intersects.length > 0) {
-        const action = intersects[0].object.userData.action;
-        handleMenuAction(action);
-    }
-}
-
-function handleMenuAction(action) {
-    audioManager.playUiClick();
-    switch(action) {
-        case 'singleplayer':
-            startSingleplayer();
-            break;
-        case 'multiplayer':
-            Notifications.show("Multiplayer mode is coming soon!", "warning");
-            break;
-        case 'settings':
-            document.getElementById('settings-overlay').style.display = 'flex';
-            break;
-        case 'account':
-            document.getElementById('account-overlay').style.display = 'flex';
-            break;
-        case 'exit':
-            if (confirm("Close the game?")) {
-                window.close();
-                // Fallback if window.close() is blocked by browser
-                setTimeout(() => {
-                    window.location.href = "about:blank";
-                }, 100);
-            }
-            break;
-    }
-}
-
-// Fullscreen toggle logic for settings
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'F11') {
-        // Handle F11 manually to ensure UI sync if needed
-    }
-});
-
-function toggleFullscreen() {
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(err => {
-            Notifications.show(`Error attempting to enable full-screen mode: ${err.message}`, 'error');
-        });
-    } else {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
+// Initialize
+if (Consent.check()) {
+    detectLanguage();
+    ModManager.loadMods();
+} else {
+    // Lock menu buttons if consent is not verified
+    const lockIds = ['singleplayer-btn', 'multiplayer-btn', 'shop-btn', 'main-settings-btn', 'account-btn'];
+    lockIds.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.disabled = true;
+            btn.title = "Please accept Terms of Service first";
         }
-    }
+    });
 }
-
-// Close account modal
-document.getElementById('close-account-btn').onclick = () => {
-    audioManager.playUiClick();
-    document.getElementById('account-overlay').style.display = 'none';
-};
-
-document.getElementById('account-login-btn').onclick = () => {
-    const user = document.getElementById('username-input').value;
-    const pass = document.getElementById('password-input').value;
-    if (user && pass) {
-        audioManager.playUiClick();
-        Notifications.show(`Welcome, ${user}! Account created (Placeholder).`, 'warning');
-        document.getElementById('account-overlay').style.display = 'none';
-    } else {
-        audioManager.playErrorSound();
-        Notifications.show("Please enter both username and password.", "error");
-    }
-};
-
-function startSingleplayer() {
-    isMainMenuActive = false;
-    window.removeEventListener('mousedown', onMenuClick);
-    window.removeEventListener('mousemove', onMenuHover);
-    document.body.style.cursor = 'default';
-    
-    // Clear menu objects
-    scene.clear();
-    menuButtons = [];
-    
-    // Reset camera for game
-    camera.position.set(0, 10, 20);
-    camera.lookAt(0, 0, 0);
-    controls.enabled = true;
-    
-    gameStarted = true;
-    initGame();
-}
-
-// Update the init sequence
-async function startApp() {
-    if (Consent.check()) {
-        await detectLanguage();
-        await ModManager.loadMods();
-        init3DMenu();
-    } else {
-        // Wait for consent
-        document.getElementById('accept-consent-btn').addEventListener('click', async () => {
-            await detectLanguage();
-            await ModManager.loadMods();
-            init3DMenu();
-        }, { once: true });
-    }
-}
-
-// Call startApp instead of the loose initialization
-startApp();
-
-// In animate function, add check for menu rotation
-// Redundant animate function removed as it is now integrated above
