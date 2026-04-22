@@ -45,7 +45,8 @@ const TRANSLATIONS = {
         music_volume: "Music Volume",
         sfx_volume: "Sound Effects",
         free_camera: "Free Camera Mode",
-        game_won: "VICTORY! You have conquered the galaxy!"
+        game_won: "VICTORY! You have conquered the galaxy!",
+        viper_realistic: "Viper Realistic"
     },
     ar: {
         game_title: "لعبة الثعبان ثلاثية الأبعاد",
@@ -1415,7 +1416,8 @@ const SKINS = [
     { id: 'lava', nameKey: 'lava_flow', head: 0xff4400, body: 0x880000, price: 100 },
     { id: 'gold', nameKey: 'golden_midas', head: 0xffff00, body: 0xaa8800, price: 250 },
     { id: 'void', nameKey: 'void_walker', head: 0xff00ff, body: 0x440044, price: 500 },
-    { id: 'matrix', nameKey: 'matrix_code', head: 0x00ff00, body: 0x003300, emissive: 0x00ff00, price: 1000 }
+    { id: 'matrix', nameKey: 'matrix_code', head: 0x00ff00, body: 0x003300, emissive: 0x00ff00, price: 1000 },
+    { id: 'viper', nameKey: 'viper_realistic', head: 0x228b22, body: 0x1a4a1a, price: 5000, isRealistic: true }
 ];
 
 const BACKGROUNDS = [
@@ -2673,6 +2675,51 @@ function updateParticles() {
 const foodMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000, emissive: 0x440000 });
 const coinMaterial = new THREE.MeshPhongMaterial({ color: 0xffcc00, emissive: 0x443300 });
 const cubeGeometry = new THREE.BoxGeometry(0.9, 0.9, 0.9);
+const sphereGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+const eyeGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+const tongueGeometry = new THREE.BoxGeometry(0.1, 0.05, 0.4);
+const tongueMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+
+function createSnakeMesh(type, skinId, dir = null) {
+    const skin = SKINS.find(s => s.id === skinId) || SKINS[0];
+    const materials = getSkinMaterials(skinId);
+    
+    if (skin.isRealistic) {
+        if (type === 'head') {
+            const headGroup = new THREE.Group();
+            const headMesh = new THREE.Mesh(sphereGeometry, materials.head);
+            headGroup.add(headMesh);
+            
+            // Add eyes
+            const eyeR = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            eyeR.position.set(0.2, 0.2, 0.4);
+            const eyeL = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            eyeL.position.set(-0.2, 0.2, 0.4);
+            headGroup.add(eyeR, eyeL);
+            
+            // Add flickering tongue
+            const tongue = new THREE.Mesh(tongueGeometry, tongueMaterial);
+            tongue.position.set(0, -0.1, 0.5);
+            headGroup.add(tongue);
+            headGroup.userData.tongue = tongue;
+            
+            // Rotate head to face movement direction
+            if (dir) {
+                const target = new THREE.Vector3().copy(dir);
+                headGroup.lookAt(target);
+            }
+            return headGroup;
+        } else if (type === 'tail') {
+            const tailMesh = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), materials.body);
+            return tailMesh;
+        } else {
+            return new THREE.Mesh(sphereGeometry, materials.body);
+        }
+    } else {
+        return new THREE.Mesh(cubeGeometry, type === 'head' ? materials.head : materials.body);
+    }
+}
 
 function getSkinMaterials(skinId) {
     const skin = SKINS.find(s => s.id === skinId) || SKINS[0];
@@ -2712,7 +2759,11 @@ function initGame() {
 
     const materials = getSkinMaterials(currentSkinId);
     for (let i = 0; i < INITIAL_SNAKE_LENGTH; i++) {
-        const mesh = new THREE.Mesh(cubeGeometry, i === 0 ? materials.head : materials.body);
+        let type = 'body';
+        if (i === 0) type = 'head';
+        else if (i === INITIAL_SNAKE_LENGTH - 1) type = 'tail';
+        
+        const mesh = createSnakeMesh(type, currentSkinId, direction);
         const pos = new THREE.Vector3(-i + 0.5, 0.5, 0.5);
         mesh.position.copy(pos);
         scene.add(mesh);
@@ -2835,17 +2886,50 @@ function update() {
         // When eating a coin, we still need to move, so we remove the tail
         const tail = snake.pop();
         scene.remove(tail.mesh);
+
+        // Update new tail geometry if realistic
+        const currentSkin = SKINS.find(s => s.id === currentSkinId);
+        if (currentSkin.isRealistic && snake.length > 0) {
+            const lastSegment = snake[snake.length - 1];
+            scene.remove(lastSegment.mesh);
+            lastSegment.mesh = createSnakeMesh('tail', currentSkinId);
+            lastSegment.mesh.position.copy(lastSegment.pos);
+            scene.add(lastSegment.mesh);
+        }
     } else {
         // Normal move: remove tail
         const tail = snake.pop();
         scene.remove(tail.mesh);
+
+        // Update new tail geometry if realistic
+        const currentSkin = SKINS.find(s => s.id === currentSkinId);
+        if (currentSkin.isRealistic && snake.length > 0) {
+            const lastSegment = snake[snake.length - 1];
+            scene.remove(lastSegment.mesh);
+            lastSegment.mesh = createSnakeMesh('tail', currentSkinId);
+            lastSegment.mesh.position.copy(lastSegment.pos);
+            scene.add(lastSegment.mesh);
+        }
     }
 
-    const materials = getSkinMaterials(currentSkinId);
-    const newHeadMesh = new THREE.Mesh(cubeGeometry, materials.head);
+    const newHeadMesh = createSnakeMesh('head', currentSkinId, direction);
     newHeadMesh.position.copy(newHeadPos);
     scene.add(newHeadMesh);
-    if (snake.length > 1) snake[0].mesh.material = materials.body;
+    
+    // Update old head to body if realistic (otherwise just update material)
+    const currentSkin = SKINS.find(s => s.id === currentSkinId);
+    if (snake.length > 0) {
+        if (currentSkin.isRealistic) {
+            const oldHead = snake[0];
+            scene.remove(oldHead.mesh);
+            oldHead.mesh = createSnakeMesh('body', currentSkinId);
+            oldHead.mesh.position.copy(oldHead.pos);
+            scene.add(oldHead.mesh);
+        } else {
+            snake[0].mesh.material = getSkinMaterials(currentSkinId).body;
+        }
+    }
+    
     snake.unshift({ pos: newHeadPos, mesh: newHeadMesh });
 
     // Victory check: Fill the entire grid
@@ -3037,7 +3121,11 @@ function updateShopPreview() {
     const group = new THREE.Group();
     const materials = getSkinMaterials(currentSkinId);
     for (let i = 0; i < 3; i++) {
-        const mesh = new THREE.Mesh(cubeGeometry, i === 0 ? materials.head : materials.body);
+        let type = 'body';
+        if (i === 0) type = 'head';
+        else if (i === 2) type = 'tail';
+        
+        const mesh = createSnakeMesh(type, currentSkinId, new THREE.Vector3(1, 0, 0));
         mesh.position.set(-i, 0, 0);
         group.add(mesh);
     }
@@ -3676,15 +3764,11 @@ const MenuManager = {
         const snakeGroup = new THREE.Group();
         const colors = [0x00ffff, 0x00cccc, 0x00aaaa, 0x008888, 0x006666];
         for (let i = 0; i < 25; i++) {
-            const geom = new THREE.BoxGeometry(1.5, 1.5, 1.5);
-            const mat = new THREE.MeshPhongMaterial({ 
-                color: colors[i % colors.length],
-                emissive: colors[i % colors.length],
-                emissiveIntensity: 0.8,
-                transparent: true,
-                opacity: 1 - (i * 0.03)
-            });
-            const mesh = new THREE.Mesh(geom, mat);
+            let type = 'body';
+            if (i === 0) type = 'head';
+            else if (i === 24) type = 'tail';
+            
+            const mesh = createSnakeMesh(type, currentSkinId, new THREE.Vector3(0, 0, 1));
             mesh.position.set(0, 0, -i * 1.5);
             snakeGroup.add(mesh);
         }
@@ -3865,11 +3949,18 @@ function animate() {
      }
 
     // Animate starfield slightly
-    if (starfield) {
-        starfield.rotation.y += 0.0005;
-    }
+     if (starfield) {
+         starfield.rotation.y += 0.0005;
+     }
 
-    // Animate coin
+     // Animate snake tongue if realistic
+     if (snake.length > 0 && snake[0].mesh.userData.tongue) {
+         const tongue = snake[0].mesh.userData.tongue;
+         tongue.scale.z = 1 + Math.sin(Date.now() * 0.02) * 0.5;
+         tongue.position.z = 0.5 + (tongue.scale.z - 1) * 0.2;
+     }
+
+     // Animate coin
     if (coin) {
         coin.mesh.rotation.y += 0.05;
     }
