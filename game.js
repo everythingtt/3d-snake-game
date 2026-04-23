@@ -4239,6 +4239,21 @@ document.getElementById('accept-consent-btn').onclick = () => {
 
 // Initialize
 async function startApp() {
+    // Show Godot Engine announcement
+    const godotOverlay = document.getElementById('godot-announcement-overlay');
+    const proceedBtn = document.getElementById('proceed-web-btn');
+    
+    if (godotOverlay && proceedBtn) {
+        godotOverlay.style.display = 'flex';
+        proceedBtn.onclick = () => {
+            audioManager.playUiClick();
+            godotOverlay.style.opacity = '0';
+            setTimeout(() => {
+                godotOverlay.style.display = 'none';
+            }, 500);
+        };
+    }
+
     if (Consent.check()) {
         detectLanguage();
         ModManager.loadMods();
