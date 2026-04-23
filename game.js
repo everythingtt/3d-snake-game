@@ -3040,7 +3040,7 @@ function updateUI() {
     document.getElementById('score').innerText = score;
     document.getElementById('high-score').innerText = highScore;
     document.getElementById('coins').innerText = coins;
-    document.getElementById('github-orbs').innerText = githubOrbs;
+    // github-orbs removed from singleplayer HUD
     document.getElementById('menu-high-score').innerText = highScore;
     document.getElementById('menu-coins').innerText = coins;
     
@@ -4331,6 +4331,98 @@ document.getElementById('accept-consent-btn').onclick = () => {
     Consent.accept();
 };
 
+function showPcRecommendation() {
+    const overlay = document.getElementById('pc-recommendation-overlay');
+    const proceedBtn = document.getElementById('pc-proceed-btn');
+    if (!overlay || !proceedBtn) return;
+
+    overlay.style.display = 'flex';
+    
+    // Draw comparisons on canvases
+    drawComparison('pc-comparison-canvas', 'pc');
+    drawComparison('mobile-comparison-canvas', 'mobile');
+
+    proceedBtn.onclick = () => {
+        audioManager.playUiClick();
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+        }, 500);
+    };
+}
+
+function drawComparison(canvasId, mode) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // Background
+    ctx.fillStyle = '#050505';
+    ctx.fillRect(0, 0, w, h);
+
+    // Grid
+    ctx.strokeStyle = mode === 'pc' ? '#00ff00' : '#004400';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < w; i += 20) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, h);
+        ctx.stroke();
+    }
+    for (let i = 0; i < h; i += 20) {
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(w, i);
+        ctx.stroke();
+    }
+
+    // Snake
+    if (mode === 'pc') {
+        // High fidelity snake (Viper Realistic style)
+        ctx.fillStyle = '#228b22';
+        ctx.beginPath();
+        ctx.arc(100, 60, 10, 0, Math.PI * 2); // Head
+        ctx.fill();
+        ctx.fillStyle = '#1a4a1a';
+        ctx.beginPath();
+        ctx.arc(80, 60, 8, 0, Math.PI * 2); // Body 1
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(60, 60, 6, 0, Math.PI * 2); // Body 2
+        ctx.fill();
+        
+        // Eyes & Tongue
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(104, 56, 2, 0, Math.PI * 2);
+        ctx.arc(104, 64, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ff0000';
+        ctx.beginPath();
+        ctx.moveTo(110, 60);
+        ctx.lineTo(118, 60);
+        ctx.stroke();
+
+        // Particles/Glow
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#00ff00';
+        ctx.strokeStyle = '#00ff00';
+        ctx.strokeRect(10, 10, w - 20, h - 20);
+    } else {
+        // Low fidelity snake (Classic Green style)
+        ctx.fillStyle = '#00ff00';
+        ctx.fillRect(90, 50, 20, 20); // Head
+        ctx.fillStyle = '#008800';
+        ctx.fillRect(70, 50, 20, 20); // Body 1
+        ctx.fillRect(50, 50, 20, 20); // Body 2
+        
+        ctx.strokeStyle = '#333';
+        ctx.strokeRect(10, 10, w - 20, h - 20);
+    }
+}
+
 // Initialize
 async function startApp() {
     // Show Godot Engine announcement
@@ -4344,6 +4436,7 @@ async function startApp() {
             godotOverlay.style.opacity = '0';
             setTimeout(() => {
                 godotOverlay.style.display = 'none';
+                showPcRecommendation();
             }, 500);
         };
     }
