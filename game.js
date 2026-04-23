@@ -2,6 +2,55 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
+// Global Version & Cache Management
+const VersionManager = {
+    VERSION: '1.2.5', // Master version - update this for global cache bust
+    CACHE_KEY: 'snake3d_deployed_version',
+
+    init() {
+        const lastVersion = localStorage.getItem(this.CACHE_KEY);
+        if (lastVersion && lastVersion !== this.VERSION) {
+            console.log(`Version upgrade detected: ${lastVersion} -> ${this.VERSION}. Flushing cache...`);
+            // Force reload from server to get new JS/CSS if version changed
+            localStorage.setItem(this.CACHE_KEY, this.VERSION);
+            location.reload(true);
+        }
+        localStorage.setItem(this.CACHE_KEY, this.VERSION);
+    },
+
+    getBust() {
+        // Returns a unique string for the current session/version
+        return `v=${this.VERSION}&s=${this._sessionToken || (this._sessionToken = Math.random().toString(36).substring(7))}`;
+    },
+
+    wrapUrl(url) {
+        if (!url) return url;
+        const separator = url.includes('?') ? '&' : '?';
+        return `${url}${separator}${this.getBust()}`;
+    },
+
+    async checkUpdates() {
+        // Creative technique: Fetch game.js with a timestamp to bypass all caches
+        // and check if the internal VERSION string has changed.
+        try {
+            const res = await fetch(`game.js?t=${Date.now()}`);
+            const text = await res.text();
+            const versionMatch = text.match(/VERSION:\s*'([^']+)'/);
+            if (versionMatch && versionMatch[1] !== this.VERSION) {
+                console.log(`New version available: ${versionMatch[1]}. Deploying...`);
+                localStorage.setItem(this.CACHE_KEY, versionMatch[1]);
+                location.reload(true);
+            }
+        } catch (e) {
+            console.warn("Update check failed (offline or server error)");
+        }
+    }
+};
+VersionManager.init();
+
+// Periodic update check every 5 minutes
+setInterval(() => VersionManager.checkUpdates(), 300000);
+
 // Game constants
 const GRID_SIZE = 20;
 const INITIAL_SNAKE_LENGTH = 3;
@@ -1553,7 +1602,7 @@ const ModManager = {
         for (const skin of SKINS) {
             if (skin.modelPath) {
                 try {
-                    const gltf = await gltfLoader.loadAsync(skin.modelPath);
+                    const gltf = await SecureLoader.loadModel(skin.modelPath);
                     this.skinModels.set(skin.id, gltf.scene);
                     if (gltf.animations && gltf.animations.length > 0) {
                         this.skinAnimations.set(skin.id, gltf.animations);
@@ -1568,7 +1617,7 @@ const ModManager = {
 
     async loadMods() {
         try {
-            const response = await fetch('mods/manifest.json').catch(e => ({ ok: false }));
+            const response = await fetch(VersionManager.wrapUrl('mods/manifest.json')).catch(e => ({ ok: false }));
             if (!response.ok) {
                 if (response.status === 404) console.log('Mod manifest not found (404)');
                 return;
@@ -1586,7 +1635,7 @@ const ModManager = {
     async loadMod(folder) {
         try {
             const basePath = `mods/${folder}/`;
-            const res = await fetch(`${basePath}mod.json`);
+            const res = await fetch(VersionManager.wrapUrl(`${basePath}mod.json`));
             if (!res.ok) {
                 Notifications.show(`System Alert: Failed to load theme config for "${folder}" (${res.status})`, 'warning');
                 return;
@@ -1609,8 +1658,8 @@ const ModManager = {
                     try {
                         let headTexture = null;
                         let bodyTexture = null;
-                        if (skin.headTexture) headTexture = await textureLoader.loadAsync(`${basePath}${skin.headTexture}`).catch(() => null);
-                        if (skin.bodyTexture) bodyTexture = await textureLoader.loadAsync(`${basePath}${skin.bodyTexture}`).catch(() => null);
+                        if (skin.headTexture) headTexture = await SecureLoader.loadTexture(`${basePath}${skin.headTexture}`).catch(() => null);
+                        if (skin.bodyTexture) bodyTexture = await SecureLoader.loadTexture(`${basePath}${skin.bodyTexture}`).catch(() => null);
                         
                         if (skin.headTexture && !headTexture) Notifications.show(`System Alert: Texture not found - ${skin.headTexture}`, 'warning');
                         if (skin.bodyTexture && !bodyTexture) Notifications.show(`System Alert: Texture not found - ${skin.bodyTexture}`, 'warning');
@@ -1649,7 +1698,7 @@ const ModManager = {
                         let envTexture = null;
                         
                         if (bg.modelPath) {
-                            customModel = await gltfLoader.loadAsync(`${basePath}Background/Models/${bg.modelPath}`)
+                            customModel = await SecureLoader.loadModel(`${basePath}Background/Models/${bg.modelPath}`)
                                 .then(gltf => gltf.scene)
                                 .catch(() => {
                                     Notifications.show(`System Alert: Model not found - ${bg.modelPath}`, 'warning');
@@ -1657,7 +1706,7 @@ const ModManager = {
                                 });
                         }
                         if (bg.texturePath) {
-                            envTexture = await textureLoader.loadAsync(`${basePath}Background/Textures/${bg.texturePath}`)
+                            envTexture = await SecureLoader.loadTexture(`${basePath}Background/Textures/${bg.texturePath}`)
                                 .catch(() => {
                                     Notifications.show(`System Alert: Texture not found - ${bg.texturePath}`, 'warning');
                                     return null;
@@ -1966,7 +2015,7 @@ class AudioManager {
         if (!this.ctx) this.init();
         if (this.externalAudioBuffers.has(url)) return this.externalAudioBuffers.get(url);
         try {
-            const response = await fetch(url);
+            const response = await fetch(VersionManager.wrapUrl(url));
             const arrayBuffer = await response.arrayBuffer();
             const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
             this.externalAudioBuffers.set(url, audioBuffer);
@@ -2181,6 +2230,19 @@ loadingManager.onError = (url) => {
 const textureLoader = new THREE.TextureLoader(loadingManager);
 const gltfLoader = new GLTFLoader(loadingManager);
 
+// Enhanced Loaders with Auto Cache Busting
+const SecureLoader = {
+    async loadTexture(url, onProgress) {
+        return new Promise((resolve, reject) => {
+            textureLoader.load(VersionManager.wrapUrl(url), resolve, onProgress, reject);
+        });
+    },
+    async loadModel(url) {
+        const gltf = await gltfLoader.loadAsync(VersionManager.wrapUrl(url));
+        return gltf;
+    }
+};
+
 // Glitch Fallback Texture (Classic Magenta/Black Checkerboard)
 function createGlitchTexture() {
     const canvas = document.createElement('canvas');
@@ -2202,38 +2264,38 @@ function createGlitchTexture() {
 const glitchTexture = createGlitchTexture();
 
 const planetTextures = {
-    earthDay: textureLoader.load('textures/earth/earth-day.png'),
-    earthNight: textureLoader.load('textures/earth/earth-night.png'),
-    venus: textureLoader.load('textures/venus/venus.png')
+    earthDay: textureLoader.load(VersionManager.wrapUrl('textures/earth/earth-day.png')),
+    earthNight: textureLoader.load(VersionManager.wrapUrl('textures/earth/earth-night.png')),
+    venus: textureLoader.load(VersionManager.wrapUrl('textures/venus/venus.png'))
 };
 
 const groundTextures = {
-    sand: textureLoader.load('textures/ground/sand.png', (texture) => {
+    sand: textureLoader.load(VersionManager.wrapUrl('textures/ground/sand.png'), (texture) => {
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
         texture.repeat.set(5, 5);
     }),
-    lava: textureLoader.load('textures/ground/lava.png', (texture) => {
+    lava: textureLoader.load(VersionManager.wrapUrl('textures/ground/lava.png'), (texture) => {
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
         texture.repeat.set(3, 3);
     }),
-    moon: textureLoader.load('textures/ground/moon-surface.png', (texture) => {
+    moon: textureLoader.load(VersionManager.wrapUrl('textures/ground/moon-surface.png'), (texture) => {
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
         texture.repeat.set(4, 4);
     }),
-    neon: textureLoader.load('textures/ground/neon-floor.png', (texture) => {
+    neon: textureLoader.load(VersionManager.wrapUrl('textures/ground/neon-floor.png'), (texture) => {
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
         texture.repeat.set(2, 2);
     }),
-    retro: textureLoader.load('textures/ground/retro.png', (texture) => {
+    retro: textureLoader.load(VersionManager.wrapUrl('textures/ground/retro.png'), (texture) => {
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
         texture.repeat.set(1, 1);
     }),
-    circuit: textureLoader.load('textures/ground/circuit-board.jpg', (texture) => {
+    circuit: textureLoader.load(VersionManager.wrapUrl('textures/ground/circuit-board.jpg'), (texture) => {
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
         texture.repeat.set(2, 2);
