@@ -4178,11 +4178,13 @@ const AdManager = {
     currentIndex: 0,
     interval: null,
     checkInterval: null,
+    failCount: 0,
 
     show() {
         const container = document.getElementById('ad-container');
         if (!container) return;
         container.style.display = 'block';
+        this.failCount = 0; // Reset fail count on show
         this.rotate();
         this.interval = setInterval(() => this.rotate(), 10000); // Rotate every 10s
         
@@ -4195,6 +4197,7 @@ const AdManager = {
         if (container) container.style.display = 'none';
         if (this.interval) clearInterval(this.interval);
         if (this.checkInterval) clearInterval(this.checkInterval);
+        this.failCount = 0;
     },
 
     rotate() {
@@ -4202,6 +4205,7 @@ const AdManager = {
         if (!img) return;
         this.currentIndex = (this.currentIndex + 1) % this.ads.length;
         img.src = this.ads[this.currentIndex];
+        // Don't reset failCount here as rotation might fail if blocked
     },
 
     startAntiAdblock() {
@@ -4212,21 +4216,33 @@ const AdManager = {
             const overlay = document.getElementById('adblock-overlay');
             const img = document.getElementById('current-ad');
             
-            if (!container || !img) return;
+            if (!container || !img || !gameStarted || gameOver) return;
 
             // Detection logic
-            const isBlocked = 
-                container.offsetParent === null || // Hidden by display: none
-                container.offsetHeight === 0 ||    // Hidden by height
-                window.getComputedStyle(container).display === 'none' ||
-                window.getComputedStyle(container).visibility === 'hidden' ||
-                img.naturalWidth === 0;            // Image failed to load (blocked resource)
+            const style = window.getComputedStyle(container);
+            const isHidden = 
+                container.offsetParent === null || 
+                container.offsetHeight === 0 ||
+                style.display === 'none' ||
+                style.visibility === 'hidden' ||
+                style.opacity === '0';
 
-            if (isBlocked && gameStarted && !gameOver) {
+            const resourceBlocked = img.complete && img.naturalWidth === 0;
+
+            if (isHidden || resourceBlocked) {
+                this.failCount++;
+            } else {
+                this.failCount = 0; // Reset on success
+            }
+
+            // Trigger only after 3 consecutive failures (6 seconds grace period)
+            if (this.failCount >= 3) {
                 overlay.style.display = 'flex';
                 isPaused = true; // Force pause
                 audioManager.stopBackgroundMusic();
-                Notifications.show("SECURITY ALERT: Adblocker interference detected.", "error");
+                if (this.failCount === 3) { // Only show notification once
+                    Notifications.show("SECURITY ALERT: Adblocker interference detected.", "error");
+                }
             } else {
                 overlay.style.display = 'none';
             }
