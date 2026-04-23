@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 // Global Version & Cache Management
 const VersionManager = {
-    VERSION: '1.2.5', // Master version - update this for global cache bust
+    VERSION: '1.2.8', // Master version - update this for global cache bust
     CACHE_KEY: 'snake3d_deployed_version',
 
     init() {
@@ -1466,7 +1466,7 @@ const SKINS = [
     { id: 'gold', nameKey: 'golden_midas', head: 0xffff00, body: 0xaa8800, price: 250 },
     { id: 'void', nameKey: 'void_walker', head: 0xff00ff, body: 0x440044, price: 500 },
     { id: 'matrix', nameKey: 'matrix_code', head: 0x00ff00, body: 0x003300, emissive: 0x00ff00, price: 1000 },
-    { id: 'viper', nameKey: 'viper_realistic', head: 0x228b22, body: 0x1a4a1a, price: 5000, isRealistic: true, modelPath: '3D Models/Viper Realistic/scene.gltf' }
+    { id: 'viper', nameKey: 'viper_realistic', head: 0x228b22, body: 0x1a4a1a, price: 5000, modelPath: '3D Models/Viper Realistic/scene.gltf' }
 ];
 
 const BACKGROUNDS = [
@@ -2771,28 +2771,23 @@ function createSnakeMesh(type, skinId, dir = null, isShop = false) {
     const materials = getSkinMaterials(skinId);
     
     // Check for pre-loaded 3D model skin
-    if (ModManager.skinModels.has(skinId)) {
+    if (ModManager.skinModels.has(skinId) && type === 'head') {
         const modelContainer = new THREE.Group();
         const model = ModManager.skinModels.get(skinId).clone();
         
         // Handle model-specific scaling and orientation
         if (skinId === 'viper') {
-            // The model is a full snake. We scale it so one "segment" of its body
-            // fits roughly into one grid cell.
-            model.scale.setScalar(0.4); 
+            // The model is a full snake. We scale it so the head fits into one grid cell.
+            model.scale.setScalar(0.8); 
             
-            // FIX: Lift the model up so it's not stuck in the ground.
-            // The grid is at Y=0, segments are at Y=0.5.
-            // If the model is centered, lifting its local Y within the group 
-            // will place it on top of the grid.
-            model.position.y = 0.1; 
+            // FIX: Ensure it sits on top of the ground
+            model.position.y = 0; 
             
-            // FIX: Rotation. If it was stuck, it might have been vertical.
-            // Reset to default and use lookAt on the container.
+            // Standard orientation: ensure it's flat on the ground plane
             model.rotation.set(0, 0, 0);
 
             if (dir) {
-                // Point the container in the movement direction
+                // Ensure the container faces the movement direction
                 const lookTarget = new THREE.Vector3().copy(modelContainer.position).add(dir);
                 modelContainer.lookAt(lookTarget);
             }
