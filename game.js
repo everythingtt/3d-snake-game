@@ -1835,6 +1835,7 @@ let isPaused = false;
 let isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 let isLowPerformance = false;
 let isFreeCamera = Security.load('snake3d_free_cam', false);
+let easterEggUsed = Security.load('snake3d_easter_egg_secure', false);
 let keyBinds = JSON.parse(Security.load('snake3d_keybinds', JSON.stringify({
     up: "ArrowUp",
     down: "ArrowDown",
@@ -3789,9 +3790,11 @@ function onKeyDown(event) {
         return;
     }
 
-    // Easter Egg: Shift + L for 5000 coins
-    if (event.shiftKey && (originalKey === 'L' || originalKey === 'l')) {
+    // Easter Egg: Shift + L for 5000 coins (One-time use)
+    if (!easterEggUsed && event.shiftKey && (originalKey === 'L' || originalKey === 'l')) {
         coins += 5000;
+        easterEggUsed = true;
+        Security.save('snake3d_easter_egg_secure', true);
         updateUI();
         audioManager.playCoinSound();
         Notifications.show("EASTER EGG: +5000 COINS RECEIVED", "success");
