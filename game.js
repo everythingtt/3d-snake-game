@@ -4133,7 +4133,7 @@ const Consent = {
         }
         return true;
     },
-    accept() {
+    async accept() {
         const geoCheckbox = document.getElementById('geo-consent-checkbox');
         const legalCheckbox = document.getElementById('legal-consent-checkbox');
         
