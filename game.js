@@ -1420,24 +1420,6 @@ const SKINS = [
     { id: 'viper', nameKey: 'viper_realistic', head: 0x228b22, body: 0x1a4a1a, price: 5000, isRealistic: true, modelPath: '3D Models/Viper Realistic/scene.gltf' }
 ];
 
-// Realistic Viper Model Data
-let viperModel = null;
-let viperAnimations = [];
-const viperMixers = new Set();
-
-async function loadViperModel() {
-    try {
-        const gltf = await gltfLoader.loadAsync('3D Models/Viper Realistic/scene.gltf');
-        viperModel = gltf.scene;
-        viperAnimations = gltf.animations;
-        console.log("Viper Realistic model loaded with animations:", viperAnimations.map(a => a.name));
-    } catch (e) {
-        console.error("Failed to load Viper Realistic model:", e);
-        Notifications.show("System Alert: Failed to load Viper model", "error");
-    }
-}
-loadViperModel();
-
 const BACKGROUNDS = [
     { 
         id: 'space', nameKey: 'deep_space', color: 0x000000, stars: true, grid: 0x444444, fog: 0x000000, envType: 'planets', price: 0,
@@ -2178,6 +2160,23 @@ loadingManager.onError = (url) => {
 const textureLoader = new THREE.TextureLoader(loadingManager);
 const gltfLoader = new GLTFLoader(loadingManager);
 
+// Realistic Viper Model Data
+let viperModel = null;
+let viperAnimations = [];
+const viperMixers = new Set();
+
+async function loadViperModel() {
+    try {
+        const gltf = await gltfLoader.loadAsync('3D%20Models/Viper%20Realistic/scene.gltf');
+        viperModel = gltf.scene;
+        viperAnimations = gltf.animations;
+        console.log("Viper Realistic model loaded successfully with " + viperAnimations.length + " animations.");
+    } catch (e) {
+        console.warn("Failed to load Viper Realistic model:", e);
+    }
+}
+loadViperModel();
+
 // Glitch Fallback Texture (Classic Magenta/Black Checkerboard)
 function createGlitchTexture() {
     const canvas = document.createElement('canvas');
@@ -2704,34 +2703,53 @@ function createSnakeMesh(type, skinId, dir = null) {
     const materials = getSkinMaterials(skinId);
     
     if (skin.isRealistic) {
-        if (skinId === 'viper' && viperModel) {
-            const modelClone = viperModel.clone();
-            // Scale model to fit the grid cell (approx 1 unit)
-            modelClone.scale.setScalar(0.5); 
-            
-            if (type === 'head') {
-                const mixer = new THREE.AnimationMixer(modelClone);
-                modelClone.userData.mixer = mixer;
-                viperMixers.add(mixer);
+        if (skinId === 'viper') {
+            if (viperModel) {
+                const modelClone = viperModel.clone();
+                // Scale model to fit the grid cell (approx 1 unit)
+                modelClone.scale.setScalar(0.5); 
                 
-                // Initial animation
-                const moveClip = THREE.AnimationClip.findByName(viperAnimations, 'SnakeBones|SnakeMove1');
-                if (moveClip) {
-                    const action = mixer.clipAction(moveClip);
-                    action.play();
-                    modelClone.userData.currentAction = action;
-                }
+                if (type === 'head') {
+                    const mixer = new THREE.AnimationMixer(modelClone);
+                    modelClone.userData.mixer = mixer;
+                    viperMixers.add(mixer);
+                    
+                    // Initial animation
+                    const moveClip = THREE.AnimationClip.findByName(viperAnimations, 'SnakeBones|SnakeMove1');
+                    if (moveClip) {
+                        const action = mixer.clipAction(moveClip);
+                        action.play();
+                        modelClone.userData.currentAction = action;
+                    }
 
-                if (dir) {
-                    const target = new THREE.Vector3().copy(dir);
-                    modelClone.lookAt(target);
+                    if (dir) {
+                        const target = new THREE.Vector3().copy(dir);
+                        modelClone.lookAt(target);
+                    }
+                    return modelClone;
+                } else {
+                    // For body/tail, use the same model but offset animation
+                    const mixer = new THREE.AnimationMixer(modelClone);
+                    modelClone.userData.mixer = mixer;
+                    viperMixers.add(mixer);
+                    
+                    const moveClip = THREE.AnimationClip.findByName(viperAnimations, 'SnakeBones|SnakeMove1');
+                    if (moveClip) {
+                        const action = mixer.clipAction(moveClip);
+                        action.play();
+                        // Offset time based on type to avoid perfect sync
+                        action.time = type === 'tail' ? 0.5 : 0.25; 
+                        modelClone.userData.currentAction = action;
+                    }
+
+                    if (dir) {
+                        const target = new THREE.Vector3().copy(dir);
+                        modelClone.lookAt(target);
+                    }
+                    return modelClone;
                 }
-                return modelClone;
             } else {
-                // For body/tail, we could use the same model but maybe different animations 
-                // or just simplified geometry to save performance.
-                // For now, let's use the model but without the head-specific animations if any.
-                return new THREE.Mesh(sphereGeometry, materials.body);
+                console.log("Viper model not loaded yet, using primitives as fallback.");
             }
         }
 
