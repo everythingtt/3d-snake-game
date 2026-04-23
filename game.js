@@ -3789,6 +3789,15 @@ function onKeyDown(event) {
         return;
     }
 
+    // Easter Egg: Shift + L for 5000 coins
+    if (event.shiftKey && (originalKey === 'L' || originalKey === 'l')) {
+        coins += 5000;
+        updateUI();
+        audioManager.playCoinSound();
+        Notifications.show("EASTER EGG: +5000 COINS RECEIVED", "success");
+        return;
+    }
+
     if (!gameStarted || isMainMenu) return;
     
     if (isBind('pause', originalKey) || originalKey === ' ') { // Keep space as a hardcoded fallback for pause
