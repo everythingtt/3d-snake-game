@@ -1466,7 +1466,7 @@ const SKINS = [
     { id: 'gold', nameKey: 'golden_midas', head: 0xffff00, body: 0xaa8800, price: 250 },
     { id: 'void', nameKey: 'void_walker', head: 0xff00ff, body: 0x440044, price: 500 },
     { id: 'matrix', nameKey: 'matrix_code', head: 0x00ff00, body: 0x003300, emissive: 0x00ff00, price: 1000 },
-    { id: 'viper', nameKey: 'viper_realistic', head: 0x228b22, body: 0x1a4a1a, price: 5000, isRealistic: true, modelPath: '3D Models/Viper Realistic/scene.gltf' }
+    { id: 'viper', nameKey: 'viper_realistic', head: 0x228b22, body: 0x1a4a1a, price: 5000, modelPath: '3D Models/Viper Realistic/scene.gltf' }
 ];
 
 const BACKGROUNDS = [
@@ -2777,7 +2777,8 @@ function createSnakeMesh(type, skinId, dir = null, isShop = false) {
         
         // Handle model-specific scaling and orientation
         if (skinId === 'viper') {
-            model.scale.setScalar(0.8); // Adjust scale to fit grid
+            model.scale.setScalar(1.2); // Make the viper head more prominent
+            model.position.y = 0.2; // LIFT IT: Move model up so it's not stuck in the ground
             if (dir) {
                 // Ensure the head faces the movement direction
                 modelContainer.lookAt(dir);
@@ -2803,6 +2804,14 @@ function createSnakeMesh(type, skinId, dir = null, isShop = false) {
         
         modelContainer.add(model);
         return modelContainer;
+    }
+    
+    // Specific stylized segments for Viper (to replace old geometric look)
+    if (skinId === 'viper' && (type === 'body' || type === 'tail')) {
+        const size = type === 'tail' ? 0.35 : 0.45;
+        const geom = new THREE.SphereGeometry(size, 16, 16);
+        const mesh = new THREE.Mesh(geom, materials.body);
+        return mesh;
     }
     
     if (skin.isRealistic) {
