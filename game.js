@@ -1466,7 +1466,7 @@ const SKINS = [
     { id: 'gold', nameKey: 'golden_midas', head: 0xffff00, body: 0xaa8800, price: 250 },
     { id: 'void', nameKey: 'void_walker', head: 0xff00ff, body: 0x440044, price: 500 },
     { id: 'matrix', nameKey: 'matrix_code', head: 0x00ff00, body: 0x003300, emissive: 0x00ff00, price: 1000 },
-    { id: 'viper', nameKey: 'viper_realistic', head: 0x228b22, body: 0x1a4a1a, price: 5000, modelPath: '3D Models/Viper Realistic/scene.gltf' }
+    { id: 'viper', nameKey: 'viper_realistic', head: 0x228b22, body: 0x1a4a1a, price: 5000, isRealistic: true, modelPath: '3D Models/Viper Realistic/scene.gltf' }
 ];
 
 const BACKGROUNDS = [
@@ -2779,9 +2779,13 @@ function createSnakeMesh(type, skinId, dir = null, isShop = false) {
         if (skinId === 'viper') {
             model.scale.setScalar(1.2); // Make the viper head more prominent
             model.position.y = 0.2; // LIFT IT: Move model up so it's not stuck in the ground
+            // If the model is "standing up" (Y-up), rotate it to face forward (Z-forward)
+            model.rotation.x = -Math.PI / 2; 
+            
             if (dir) {
                 // Ensure the head faces the movement direction
-                modelContainer.lookAt(dir);
+                // Since position is (0,0,0) here, looking at the direction vector works
+                modelContainer.lookAt(dir.x, dir.y, dir.z);
             }
         }
 
@@ -3088,6 +3092,8 @@ function update() {
         if (currentSkin.isRealistic) {
             const oldHead = snake[0];
             scene.remove(oldHead.mesh);
+            // Remove mixer for the old head group
+            snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== oldHead.mesh);
             oldHead.mesh = createSnakeMesh('body', currentSkinId);
             oldHead.mesh.position.copy(oldHead.pos);
             scene.add(oldHead.mesh);
