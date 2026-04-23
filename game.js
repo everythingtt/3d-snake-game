@@ -2,55 +2,6 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
-// Global Version & Cache Management
-const VersionManager = {
-    VERSION: '1.2.9', // Master version - update this for global cache bust
-    CACHE_KEY: 'snake3d_deployed_version',
-
-    init() {
-        const lastVersion = localStorage.getItem(this.CACHE_KEY);
-        if (lastVersion && lastVersion !== this.VERSION) {
-            console.log(`Version upgrade detected: ${lastVersion} -> ${this.VERSION}. Flushing cache...`);
-            // Force reload from server to get new JS/CSS if version changed
-            localStorage.setItem(this.CACHE_KEY, this.VERSION);
-            location.reload(true);
-        }
-        localStorage.setItem(this.CACHE_KEY, this.VERSION);
-    },
-
-    getBust() {
-        // Returns a unique string for the current session/version
-        return `v=${this.VERSION}&s=${this._sessionToken || (this._sessionToken = Math.random().toString(36).substring(7))}`;
-    },
-
-    wrapUrl(url) {
-        if (!url) return url;
-        const separator = url.includes('?') ? '&' : '?';
-        return `${url}${separator}${this.getBust()}`;
-    },
-
-    async checkUpdates() {
-        // Creative technique: Fetch game.js with a timestamp to bypass all caches
-        // and check if the internal VERSION string has changed.
-        try {
-            const res = await fetch(`game.js?t=${Date.now()}`);
-            const text = await res.text();
-            const versionMatch = text.match(/VERSION:\s*'([^']+)'/);
-            if (versionMatch && versionMatch[1] !== this.VERSION) {
-                console.log(`New version available: ${versionMatch[1]}. Deploying...`);
-                localStorage.setItem(this.CACHE_KEY, versionMatch[1]);
-                location.reload(true);
-            }
-        } catch (e) {
-            console.warn("Update check failed (offline or server error)");
-        }
-    }
-};
-VersionManager.init();
-
-// Periodic update check every 5 minutes
-setInterval(() => VersionManager.checkUpdates(), 300000);
-
 // Game constants
 const GRID_SIZE = 20;
 const INITIAL_SNAKE_LENGTH = 3;
@@ -1466,8 +1417,26 @@ const SKINS = [
     { id: 'gold', nameKey: 'golden_midas', head: 0xffff00, body: 0xaa8800, price: 250 },
     { id: 'void', nameKey: 'void_walker', head: 0xff00ff, body: 0x440044, price: 500 },
     { id: 'matrix', nameKey: 'matrix_code', head: 0x00ff00, body: 0x003300, emissive: 0x00ff00, price: 1000 },
-    { id: 'viper', nameKey: 'viper_realistic', head: 0x228b22, body: 0x1a4a1a, price: 5000, modelPath: '3D Models/Viper Realistic/scene.gltf' }
+    { id: 'viper', nameKey: 'viper_realistic', head: 0x228b22, body: 0x1a4a1a, price: 5000, isRealistic: true, modelPath: '3D Models/Viper Realistic/scene.gltf' }
 ];
+
+// Realistic Viper Model Data
+let viperModel = null;
+let viperAnimations = [];
+const viperMixers = new Set();
+
+async function loadViperModel() {
+    try {
+        const gltf = await gltfLoader.loadAsync('3D Models/Viper Realistic/scene.gltf');
+        viperModel = gltf.scene;
+        viperAnimations = gltf.animations;
+        console.log("Viper Realistic model loaded with animations:", viperAnimations.map(a => a.name));
+    } catch (e) {
+        console.error("Failed to load Viper Realistic model:", e);
+        Notifications.show("System Alert: Failed to load Viper model", "error");
+    }
+}
+loadViperModel();
 
 const BACKGROUNDS = [
     { 
@@ -1595,29 +1564,10 @@ const Notifications = {
 const ModManager = {
     mods: [],
     assets: new Map(), // Store loaded textures/models for mods
-    skinModels: new Map(), // Store pre-loaded skin models
-    skinAnimations: new Map(), // Store animations for skin models
-
-    async loadSkinModels() {
-        for (const skin of SKINS) {
-            if (skin.modelPath) {
-                try {
-                    const gltf = await SecureLoader.loadModel(skin.modelPath);
-                    this.skinModels.set(skin.id, gltf.scene);
-                    if (gltf.animations && gltf.animations.length > 0) {
-                        this.skinAnimations.set(skin.id, gltf.animations);
-                    }
-                    console.log(`Loaded skin model and animations: ${skin.id}`);
-                } catch (e) {
-                    console.error(`Failed to load skin model ${skin.id}:`, e);
-                }
-            }
-        }
-    },
 
     async loadMods() {
         try {
-            const response = await fetch(VersionManager.wrapUrl('mods/manifest.json')).catch(e => ({ ok: false }));
+            const response = await fetch('mods/manifest.json').catch(e => ({ ok: false }));
             if (!response.ok) {
                 if (response.status === 404) console.log('Mod manifest not found (404)');
                 return;
@@ -1635,7 +1585,7 @@ const ModManager = {
     async loadMod(folder) {
         try {
             const basePath = `mods/${folder}/`;
-            const res = await fetch(VersionManager.wrapUrl(`${basePath}mod.json`));
+            const res = await fetch(`${basePath}mod.json`);
             if (!res.ok) {
                 Notifications.show(`System Alert: Failed to load theme config for "${folder}" (${res.status})`, 'warning');
                 return;
@@ -1658,8 +1608,8 @@ const ModManager = {
                     try {
                         let headTexture = null;
                         let bodyTexture = null;
-                        if (skin.headTexture) headTexture = await SecureLoader.loadTexture(`${basePath}${skin.headTexture}`).catch(() => null);
-                        if (skin.bodyTexture) bodyTexture = await SecureLoader.loadTexture(`${basePath}${skin.bodyTexture}`).catch(() => null);
+                        if (skin.headTexture) headTexture = await textureLoader.loadAsync(`${basePath}${skin.headTexture}`).catch(() => null);
+                        if (skin.bodyTexture) bodyTexture = await textureLoader.loadAsync(`${basePath}${skin.bodyTexture}`).catch(() => null);
                         
                         if (skin.headTexture && !headTexture) Notifications.show(`System Alert: Texture not found - ${skin.headTexture}`, 'warning');
                         if (skin.bodyTexture && !bodyTexture) Notifications.show(`System Alert: Texture not found - ${skin.bodyTexture}`, 'warning');
@@ -1698,7 +1648,7 @@ const ModManager = {
                         let envTexture = null;
                         
                         if (bg.modelPath) {
-                            customModel = await SecureLoader.loadModel(`${basePath}Background/Models/${bg.modelPath}`)
+                            customModel = await gltfLoader.loadAsync(`${basePath}Background/Models/${bg.modelPath}`)
                                 .then(gltf => gltf.scene)
                                 .catch(() => {
                                     Notifications.show(`System Alert: Model not found - ${bg.modelPath}`, 'warning');
@@ -1706,7 +1656,7 @@ const ModManager = {
                                 });
                         }
                         if (bg.texturePath) {
-                            envTexture = await SecureLoader.loadTexture(`${basePath}Background/Textures/${bg.texturePath}`)
+                            envTexture = await textureLoader.loadAsync(`${basePath}Background/Textures/${bg.texturePath}`)
                                 .catch(() => {
                                     Notifications.show(`System Alert: Texture not found - ${bg.texturePath}`, 'warning');
                                     return null;
@@ -1883,8 +1833,6 @@ const Security = {
 
 // Game state
 let snake = [];
-let snakeMixers = []; // Track animation mixers for snake segments
-let shopMixers = []; // Track animation mixers for shop preview
 let direction = new THREE.Vector3(1, 0, 0);
 let nextDirection = new THREE.Vector3(1, 0, 0);
 let food = null;
@@ -2015,7 +1963,7 @@ class AudioManager {
         if (!this.ctx) this.init();
         if (this.externalAudioBuffers.has(url)) return this.externalAudioBuffers.get(url);
         try {
-            const response = await fetch(VersionManager.wrapUrl(url));
+            const response = await fetch(url);
             const arrayBuffer = await response.arrayBuffer();
             const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
             this.externalAudioBuffers.set(url, audioBuffer);
@@ -2230,19 +2178,6 @@ loadingManager.onError = (url) => {
 const textureLoader = new THREE.TextureLoader(loadingManager);
 const gltfLoader = new GLTFLoader(loadingManager);
 
-// Enhanced Loaders with Auto Cache Busting
-const SecureLoader = {
-    async loadTexture(url, onProgress) {
-        return new Promise((resolve, reject) => {
-            textureLoader.load(VersionManager.wrapUrl(url), resolve, onProgress, reject);
-        });
-    },
-    async loadModel(url) {
-        const gltf = await gltfLoader.loadAsync(VersionManager.wrapUrl(url));
-        return gltf;
-    }
-};
-
 // Glitch Fallback Texture (Classic Magenta/Black Checkerboard)
 function createGlitchTexture() {
     const canvas = document.createElement('canvas');
@@ -2264,38 +2199,38 @@ function createGlitchTexture() {
 const glitchTexture = createGlitchTexture();
 
 const planetTextures = {
-    earthDay: textureLoader.load(VersionManager.wrapUrl('textures/earth/earth-day.png')),
-    earthNight: textureLoader.load(VersionManager.wrapUrl('textures/earth/earth-night.png')),
-    venus: textureLoader.load(VersionManager.wrapUrl('textures/venus/venus.png'))
+    earthDay: textureLoader.load('textures/earth/earth-day.png'),
+    earthNight: textureLoader.load('textures/earth/earth-night.png'),
+    venus: textureLoader.load('textures/venus/venus.png')
 };
 
 const groundTextures = {
-    sand: textureLoader.load(VersionManager.wrapUrl('textures/ground/sand.png'), (texture) => {
+    sand: textureLoader.load('textures/ground/sand.png', (texture) => {
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
         texture.repeat.set(5, 5);
     }),
-    lava: textureLoader.load(VersionManager.wrapUrl('textures/ground/lava.png'), (texture) => {
+    lava: textureLoader.load('textures/ground/lava.png', (texture) => {
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
         texture.repeat.set(3, 3);
     }),
-    moon: textureLoader.load(VersionManager.wrapUrl('textures/ground/moon-surface.png'), (texture) => {
+    moon: textureLoader.load('textures/ground/moon-surface.png', (texture) => {
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
         texture.repeat.set(4, 4);
     }),
-    neon: textureLoader.load(VersionManager.wrapUrl('textures/ground/neon-floor.png'), (texture) => {
+    neon: textureLoader.load('textures/ground/neon-floor.png', (texture) => {
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
         texture.repeat.set(2, 2);
     }),
-    retro: textureLoader.load(VersionManager.wrapUrl('textures/ground/retro.png'), (texture) => {
+    retro: textureLoader.load('textures/ground/retro.png', (texture) => {
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
         texture.repeat.set(1, 1);
     }),
-    circuit: textureLoader.load(VersionManager.wrapUrl('textures/ground/circuit-board.jpg'), (texture) => {
+    circuit: textureLoader.load('textures/ground/circuit-board.jpg', (texture) => {
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
         texture.repeat.set(2, 2);
@@ -2308,8 +2243,6 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerH
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.getElementById('game-container').appendChild(renderer.domElement);
-
-const clock = new THREE.Clock(); // For animations
 
 const controls = new OrbitControls(camera, renderer.domElement);
 camera.position.set(0, 10, 20);
@@ -2766,73 +2699,42 @@ const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
 const tongueGeometry = new THREE.BoxGeometry(0.1, 0.05, 0.4);
 const tongueMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 
-function createSnakeMesh(type, skinId, dir = null, isShop = false) {
+function createSnakeMesh(type, skinId, dir = null) {
     const skin = SKINS.find(s => s.id === skinId) || SKINS[0];
     const materials = getSkinMaterials(skinId);
     
-    // Check for pre-loaded 3D model skin
-    if (ModManager.skinModels.has(skinId) && type === 'head') {
-        const modelContainer = new THREE.Group();
-        const model = ModManager.skinModels.get(skinId).clone();
-        
-        // Handle model-specific scaling and orientation
-        if (skinId === 'viper') {
-            // FIX: Scaling. Sketchfab models often have a 100x scale.
-            // 0.01 makes it fit perfectly in our 1-unit grid cells.
-            model.scale.setScalar(0.01); 
+    if (skin.isRealistic) {
+        if (skinId === 'viper' && viperModel) {
+            const modelClone = viperModel.clone();
+            // Scale model to fit the grid cell (approx 1 unit)
+            modelClone.scale.setScalar(0.5); 
             
-            // FIX: Rotation. Model was standing up.
-            // Rotate 90 degrees on X to lay it flat on the grid.
-            model.rotation.x = Math.PI / 2;
-            
-            // FIX: Vertical Position. 
-            // The container is at Y=0.5. We lower the model within it 
-            // so its belly sits on the grid floor.
-            model.position.y = -0.5; 
+            if (type === 'head') {
+                const mixer = new THREE.AnimationMixer(modelClone);
+                modelClone.userData.mixer = mixer;
+                viperMixers.add(mixer);
+                
+                // Initial animation
+                const moveClip = THREE.AnimationClip.findByName(viperAnimations, 'SnakeBones|SnakeMove1');
+                if (moveClip) {
+                    const action = mixer.clipAction(moveClip);
+                    action.play();
+                    modelClone.userData.currentAction = action;
+                }
 
-            if (dir) {
-                // Point the container in the movement direction
-                const lookTarget = new THREE.Vector3().copy(modelContainer.position).add(dir);
-                modelContainer.lookAt(lookTarget);
+                if (dir) {
+                    const target = new THREE.Vector3().copy(dir);
+                    modelClone.lookAt(target);
+                }
+                return modelClone;
+            } else {
+                // For body/tail, we could use the same model but maybe different animations 
+                // or just simplified geometry to save performance.
+                // For now, let's use the model but without the head-specific animations if any.
+                return new THREE.Mesh(sphereGeometry, materials.body);
             }
         }
 
-        // Initialize animations if they exist
-        const animations = ModManager.skinAnimations.get(skinId);
-        if (animations) {
-            // FIX: Use the 'model' (the GLTF scene) as the root for the mixer.
-            // This ensures the animation tracks can find their target bones correctly.
-            const mixer = new THREE.AnimationMixer(model);
-            const actions = {};
-            animations.forEach(clip => {
-                actions[clip.name] = mixer.clipAction(clip);
-            });
-            
-            const mixerData = { mixer, actions, skinId, type, model, container: modelContainer };
-            if (isShop) shopMixers.push(mixerData);
-            else snakeMixers.push(mixerData);
-            
-            // Set initial animation
-            updateSegmentAnimation(mixerData);
-        }
-        
-        modelContainer.add(model);
-        return modelContainer;
-    }
-    
-    // Specific stylized segments for Viper (to create a cohesive realistic body)
-    if (skinId === 'viper' && (type === 'body' || type === 'tail')) {
-        const size = type === 'tail' ? 0.35 : 0.45;
-        const geom = new THREE.SphereGeometry(size, 16, 16);
-        // Flatten the sphere to look more like a snake's slithering body segment
-        geom.scale(1, 0.7, 1); 
-        const mesh = new THREE.Mesh(geom, materials.body);
-        // Lower slightly to match the head's height
-        mesh.position.y = -0.1; 
-        return mesh;
-    }
-    
-    if (skin.isRealistic) {
         if (type === 'head') {
             const headGroup = new THREE.Group();
             const headMesh = new THREE.Mesh(sphereGeometry, materials.head);
@@ -2896,37 +2798,15 @@ function getSkinMaterials(skinId) {
     };
 }
 
-function updateSegmentAnimation(mixerData) {
-    const { actions, skinId } = mixerData;
-    if (skinId === 'viper') {
-        // Stop all current actions
-        Object.values(actions).forEach(action => action.stop());
-
-        if (isPaused || !gameStarted || isMainMenu) {
-            // Idle mode
-            if (actions['SnakeBones|SnakeSearch.001']) {
-                actions['SnakeBones|SnakeSearch.001'].play();
-            }
-        } else {
-            // Moving mode - speed check
-            const isFast = moveInterval <= 150; // Threshold for "fast" speed
-            if (isFast && actions['SnakeBones|SnakeMove1']) {
-                actions['SnakeBones|SnakeMove1'].play();
-            } else if (actions['SnakeBones|SnakeMove2']) {
-                actions['SnakeBones|SnakeMove2'].play();
-            }
-        }
-    }
-}
-
-function updateAllSnakeAnimations() {
-    snakeMixers.forEach(mixerData => updateSegmentAnimation(mixerData));
-}
-
 function initGame() {
-    snake.forEach(segment => scene.remove(segment.mesh));
+    snake.forEach(segment => {
+        if (segment.mesh.userData.mixer) {
+            viperMixers.delete(segment.mesh.userData.mixer);
+        }
+        scene.remove(segment.mesh);
+    });
     snake = [];
-    snakeMixers = []; // Clear old mixers
+    viperMixers.clear(); // Clear all mixers for new game
     if (food) scene.remove(food.mesh);
     food = null;
     if (coin) scene.remove(coin.mesh);
@@ -3045,7 +2925,6 @@ function update() {
         // Coins are now separate, food only gives score
         updateUI();
         moveInterval = Math.max(MIN_MOVE_INTERVAL, INITIAL_MOVE_INTERVAL - Math.floor(score / 50) * 10);
-        updateAllSnakeAnimations(); // Update animations for new speed
         audioManager.playEatSound();
         const pColor = BACKGROUNDS.find(b => b.id === currentBgId)?.particleColor || 0xff0000;
         for (let i = 0; i < 15; i++) createParticle(food.pos, pColor);
@@ -3061,17 +2940,16 @@ function update() {
         
         // When eating a coin, we still need to move, so we remove the tail
         const tail = snake.pop();
+        if (tail.mesh.userData.mixer) {
+            viperMixers.delete(tail.mesh.userData.mixer);
+        }
         scene.remove(tail.mesh);
-        // Remove mixer for this segment if it exists
-        snakeMixers = snakeMixers.filter(m => m.container !== tail.mesh && m.model !== tail.mesh);
 
         // Update new tail geometry if realistic
         const currentSkin = SKINS.find(s => s.id === currentSkinId);
-        if ((currentSkin.isRealistic || currentSkin.modelPath) && snake.length > 0) {
+        if (currentSkin.isRealistic && snake.length > 0) {
             const lastSegment = snake[snake.length - 1];
             scene.remove(lastSegment.mesh);
-            // Remove mixer for old tail
-            snakeMixers = snakeMixers.filter(m => m.container !== lastSegment.mesh && m.model !== lastSegment.mesh);
             lastSegment.mesh = createSnakeMesh('tail', currentSkinId);
             lastSegment.mesh.position.copy(lastSegment.pos);
             scene.add(lastSegment.mesh);
@@ -3079,17 +2957,16 @@ function update() {
     } else {
         // Normal move: remove tail
         const tail = snake.pop();
+        if (tail.mesh.userData.mixer) {
+            viperMixers.delete(tail.mesh.userData.mixer);
+        }
         scene.remove(tail.mesh);
-        // Remove mixer for this segment if it exists
-        snakeMixers = snakeMixers.filter(m => m.container !== tail.mesh && m.model !== tail.mesh);
 
         // Update new tail geometry if realistic
         const currentSkin = SKINS.find(s => s.id === currentSkinId);
-        if ((currentSkin.isRealistic || currentSkin.modelPath) && snake.length > 0) {
+        if (currentSkin.isRealistic && snake.length > 0) {
             const lastSegment = snake[snake.length - 1];
             scene.remove(lastSegment.mesh);
-            // Remove mixer for old tail
-            snakeMixers = snakeMixers.filter(m => m.container !== lastSegment.mesh && m.model !== lastSegment.mesh);
             lastSegment.mesh = createSnakeMesh('tail', currentSkinId);
             lastSegment.mesh.position.copy(lastSegment.pos);
             scene.add(lastSegment.mesh);
@@ -3103,11 +2980,12 @@ function update() {
     // Update old head to body if realistic (otherwise just update material)
     const currentSkin = SKINS.find(s => s.id === currentSkinId);
     if (snake.length > 0) {
-        if (currentSkin.isRealistic || currentSkin.modelPath) {
+        if (currentSkin.isRealistic) {
             const oldHead = snake[0];
+            if (oldHead.mesh.userData.mixer) {
+                viperMixers.delete(oldHead.mesh.userData.mixer);
+            }
             scene.remove(oldHead.mesh);
-            // Remove mixer for the old head group
-            snakeMixers = snakeMixers.filter(m => m.container !== oldHead.mesh && m.model !== oldHead.mesh);
             oldHead.mesh = createSnakeMesh('body', currentSkinId);
             oldHead.mesh.position.copy(oldHead.pos);
             scene.add(oldHead.mesh);
@@ -3303,8 +3181,14 @@ document.getElementById('tab-backgrounds').onclick = () => {
 };
 
 function updateShopPreview() {
-    if (shopSnake) shopScene.remove(shopSnake);
-    shopMixers = []; // Clear old mixers
+    if (shopSnake) {
+        shopSnake.traverse(child => {
+            if (child.userData.mixer) {
+                viperMixers.delete(child.userData.mixer);
+            }
+        });
+        shopScene.remove(shopSnake);
+    }
     const group = new THREE.Group();
     const materials = getSkinMaterials(currentSkinId);
     for (let i = 0; i < 3; i++) {
@@ -3312,13 +3196,12 @@ function updateShopPreview() {
         if (i === 0) type = 'head';
         else if (i === 2) type = 'tail';
         
-        const mesh = createSnakeMesh(type, currentSkinId, new THREE.Vector3(1, 0, 0), true);
+        const mesh = createSnakeMesh(type, currentSkinId, new THREE.Vector3(1, 0, 0));
         mesh.position.set(-i, 0, 0);
         group.add(mesh);
     }
     shopSnake = group;
     shopScene.add(shopSnake);
-    shopMixers.forEach(m => updateSegmentAnimation(m));
 }
 
 function updateShopPreviewBg() {
@@ -3565,10 +3448,11 @@ function animateDecorativeObjects(objects) {
 function animateShop() {
     if (document.getElementById('shop-overlay').style.display !== 'none') {
         requestAnimationFrame(animateShop);
-        const delta = clock.getDelta();
         if (shopSnake) shopSnake.rotation.y += 0.02;
+        if (currentSkinId === 'viper') {
+            updateViperAnimations();
+        }
         animateDecorativeObjects(shopDecorativeObjects);
-        shopMixers.forEach(m => m.mixer.update(delta));
         shopRenderer.render(shopScene, shopCamera);
     }
 }
@@ -3595,7 +3479,6 @@ function togglePause() {
     } else {
         audioManager.startBackgroundMusic();
     }
-    updateAllSnakeAnimations();
 }
 
 document.getElementById('mod-picker-btn').onclick = () => {
@@ -3678,14 +3561,6 @@ document.getElementById('start-btn').onclick = () => {
     gameStarted = true;
     updateBackground(); // Ensure background is correct for game start
     initGame();
-    updateAllSnakeAnimations(); // Set correct initial animations
-    
-    // Experience Tip for PC users
-    if (!isTouchDevice) {
-        setTimeout(() => {
-            Notifications.show("PRO TIP: PC version features dynamic trailing camera!", "warning");
-        }, 2000);
-    }
 };
 
 document.getElementById('mute-btn').onclick = () => {
@@ -3878,16 +3753,6 @@ function onKeyDown(event) {
         return;
     }
 
-    // Secret Easter Egg: Shift + L to get 5000 coins
-    if (event.shiftKey && (originalKey === 'L' || originalKey === 'l')) {
-        coins += 5000;
-        Security.save('snake3d_coins_secure', coins);
-        updateUI();
-        audioManager.playCoinSound();
-        Notifications.show("TREASURE FOUND: +5000 Coins!", "warning");
-        return;
-    }
-
     if (!gameStarted || isMainMenu) return;
     
     if (isBind('pause', originalKey) || originalKey === ' ') { // Keep space as a hardcoded fallback for pause
@@ -4075,9 +3940,50 @@ const MenuManager = {
     }
 };
 
+const SPEED_THRESHOLD = 150;
+const clock = new THREE.Clock();
+
+function updateViperAnimations() {
+    const delta = clock.getDelta();
+    
+    // Update all active mixers
+    viperMixers.forEach(mixer => {
+        mixer.update(delta);
+        const model = mixer.getRoot();
+        
+        let targetAnim = 'SnakeBones|SnakeMove1';
+        
+        if (isPaused) {
+            targetAnim = 'SnakeBones|SnakeSearch.001';
+        } else if (moveInterval <= SPEED_THRESHOLD) {
+            targetAnim = 'SnakeBones|SnakeMove2';
+        }
+        
+        const currentAction = model.userData.currentAction;
+        if (currentAction && currentAction.getClip().name !== targetAnim) {
+            const nextClip = THREE.AnimationClip.findByName(viperAnimations, targetAnim);
+            if (nextClip) {
+                const nextAction = mixer.clipAction(nextClip);
+                nextAction.reset();
+                nextAction.setEffectiveTimeScale(1);
+                nextAction.setEffectiveWeight(1);
+                
+                // Crossfade for smoothness
+                currentAction.crossFadeTo(nextAction, 0.5, true);
+                nextAction.play();
+                model.userData.currentAction = nextAction;
+            }
+        }
+    });
+}
+
 function animate() {
      requestAnimationFrame(animate);
-     const delta = clock.getDelta();
+     
+     // Update animations for Viper Realistic skin
+     if (currentSkinId === 'viper') {
+         updateViperAnimations();
+     }
      
      if (isMainMenu) {
          // Menu animations
@@ -4110,7 +4016,6 @@ function animate() {
      update();
      updateParticles();
      animateDecorativeObjects(decorativeObjects);
-     snakeMixers.forEach(m => m.mixer.update(delta));
      
      if (isFreeCamera) {
          // WASD movement for free camera
@@ -4243,7 +4148,7 @@ const Consent = {
         }
         return true;
     },
-    async accept() {
+    accept() {
         const geoCheckbox = document.getElementById('geo-consent-checkbox');
         const legalCheckbox = document.getElementById('legal-consent-checkbox');
         
@@ -4276,7 +4181,6 @@ const Consent = {
         // Clear cached language for fresh detection
         Security.save('snake3d_lang_cache', null);
         detectLanguage();
-        await ModManager.loadSkinModels();
         ModManager.loadMods();
     }
 };
@@ -4289,11 +4193,8 @@ document.getElementById('accept-consent-btn').onclick = () => {
 // Initialize
 if (Consent.check()) {
     detectLanguage();
-    (async () => {
-        await ModManager.loadSkinModels();
-        ModManager.loadMods();
-        MenuManager.init();
-    })();
+    ModManager.loadMods();
+    MenuManager.init();
 } else {
     // Lock start button if consent is not verified
     const startBtn = document.getElementById('start-btn');
