@@ -2166,16 +2166,32 @@ let viperAnimations = [];
 const viperMixers = new Set();
 
 async function loadViperModel() {
+    if (viperModel) return; 
     try {
         const gltf = await gltfLoader.loadAsync('3D%20Models/Viper%20Realistic/scene.gltf');
         viperModel = gltf.scene;
         viperAnimations = gltf.animations;
         console.log("Viper Realistic model loaded successfully with " + viperAnimations.length + " animations.");
+        
+        // Refresh scene if using viper skin
+        if (currentSkinId === 'viper') {
+            if (isMainMenu) {
+                MenuManager.createMenuScene();
+            } else if (gameStarted && !gameOver) {
+                // For an active game, we'd need to replace segments, 
+                // but usually the model loads during the loading screen.
+                // If it loads during a game, next segments spawned will use the model.
+            }
+            
+            // Refresh shop if open
+            if (document.getElementById('shop-overlay').style.display !== 'none') {
+                updateShopPreview();
+            }
+        }
     } catch (e) {
         console.warn("Failed to load Viper Realistic model:", e);
     }
 }
-loadViperModel();
 
 // Glitch Fallback Texture (Classic Magenta/Black Checkerboard)
 function createGlitchTexture() {
@@ -3850,6 +3866,14 @@ const MenuManager = {
     },
 
     createMenuScene() {
+        if (menuDecorativeGroup) {
+            menuDecorativeGroup.traverse(child => {
+                if (child.userData.mixer) {
+                    viperMixers.delete(child.userData.mixer);
+                }
+            });
+            scene.remove(menuDecorativeGroup);
+        }
         menuDecorativeGroup = new THREE.Group();
         
         // Create a cool snake for the menu
@@ -4209,28 +4233,46 @@ document.getElementById('accept-consent-btn').onclick = () => {
 };
 
 // Initialize
-if (Consent.check()) {
-    detectLanguage();
-    ModManager.loadMods();
-    MenuManager.init();
-} else {
-    // Lock start button if consent is not verified
-    const startBtn = document.getElementById('start-btn');
-    if (startBtn) {
-        startBtn.disabled = true;
-        startBtn.title = "Please accept Terms of Service first";
-    }
-    const shopBtn = document.getElementById('shop-btn');
-    if (shopBtn) {
-        shopBtn.disabled = true;
-        shopBtn.title = "Please accept Terms of Service first";
-    }
-    
-    // Also prevent menu initialization until consent
-    const acceptBtn = document.getElementById('accept-consent-btn');
-    const originalAccept = acceptBtn.onclick;
-    acceptBtn.onclick = () => {
-        originalAccept();
+async function startApp() {
+    if (Consent.check()) {
+        detectLanguage();
+        ModManager.loadMods();
+        
+        // Wait for viper model if it's the current skin
+        if (currentSkinId === 'viper' && !viperModel) {
+            await loadViperModel();
+        }
+        
         MenuManager.init();
-    };
-}
+    } else {
+        // Lock start button if consent is not verified
+        const startBtn = document.getElementById('start-btn');
+        if (startBtn) {
+            startBtn.disabled = true;
+            startBtn.title = "Please accept Terms of Service first";
+        }
+        const shopBtn = document.getElementById('shop-btn');
+        if (shopBtn) {
+            shopBtn.disabled = true;
+            shopBtn.title = "Please accept Terms of Service first";
+        }
+        
+        // Also prevent menu initialization until consent
+        const acceptBtn = document.getElementById('accept-consent-btn');
+        const originalAccept = acceptBtn.onclick;
+        acceptBtn.onclick = async () => {
+            originalAccept();
+            
+            // Re-check skin after consent (in case it changed during detection)
+            if (currentSkinId === 'viper' && !viperModel) {
+                await loadViperModel();
+            }
+             MenuManager.init();
+         };
+     }
+     
+     // Start loading Viper model in background if not already started
+     loadViperModel();
+ }
+ 
+ startApp();
