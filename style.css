@@ -53,6 +53,15 @@
     border: 1px solid rgba(71, 140, 191, 0.4);
 }
 
+.status-tag.active {
+    font-size: 0.7rem;
+    background: rgba(0, 255, 0, 0.1);
+    color: #00ff00;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid rgba(0, 255, 0, 0.3);
+}
+
 .engine-logos {
     display: flex;
     justify-content: center;
