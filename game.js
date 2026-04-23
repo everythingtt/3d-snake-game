@@ -3858,6 +3858,16 @@ function onKeyDown(event) {
         return;
     }
 
+    // Secret Easter Egg: Shift + L to get 5000 coins
+    if (event.shiftKey && (originalKey === 'L' || originalKey === 'l')) {
+        coins += 5000;
+        Security.save('snake3d_coins_secure', coins);
+        updateUI();
+        audioManager.playCoinSound();
+        Notifications.show("TREASURE FOUND: +5000 Coins!", "warning");
+        return;
+    }
+
     if (!gameStarted || isMainMenu) return;
     
     if (isBind('pause', originalKey) || originalKey === ' ') { // Keep space as a hardcoded fallback for pause
