@@ -2708,23 +2708,24 @@ function createSnakeMesh(type, skinId, dir = null, isShop = false) {
     const skin = SKINS.find(s => s.id === skinId) || SKINS[0];
     const materials = getSkinMaterials(skinId);
     
-    // Check for pre-loaded 3D model skin
-    if (ModManager.skinModels.has(skinId)) {
+    // Check for pre-loaded 3D model skin (Currently optimized for Head only)
+    if (ModManager.skinModels.has(skinId) && type === 'head') {
+        const modelContainer = new THREE.Group();
         const model = ModManager.skinModels.get(skinId).clone();
         
         // Handle model-specific scaling and orientation
         if (skinId === 'viper') {
-            model.scale.setScalar(0.5); // Adjust scale to fit grid
+            model.scale.setScalar(0.8); // Adjust scale to fit grid
             if (dir) {
-                const target = new THREE.Vector3().copy(dir);
-                model.lookAt(target);
+                // Ensure the head faces the movement direction
+                modelContainer.lookAt(dir);
             }
         }
 
         // Initialize animations if they exist
         const animations = ModManager.skinAnimations.get(skinId);
         if (animations) {
-            const mixer = new THREE.AnimationMixer(model);
+            const mixer = new THREE.AnimationMixer(modelContainer);
             const actions = {};
             animations.forEach(clip => {
                 actions[clip.name] = mixer.clipAction(clip);
@@ -2738,7 +2739,8 @@ function createSnakeMesh(type, skinId, dir = null, isShop = false) {
             updateSegmentAnimation(mixerData);
         }
         
-        return model;
+        modelContainer.add(model);
+        return modelContainer;
     }
     
     if (skin.isRealistic) {
