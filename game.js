@@ -2770,22 +2770,31 @@ function createSnakeMesh(type, skinId, dir = null, isShop = false) {
     const skin = SKINS.find(s => s.id === skinId) || SKINS[0];
     const materials = getSkinMaterials(skinId);
     
-    // Check for pre-loaded 3D model skin (Currently optimized for Head only)
-    if (ModManager.skinModels.has(skinId) && type === 'head') {
+    // Check for pre-loaded 3D model skin
+    if (ModManager.skinModels.has(skinId)) {
         const modelContainer = new THREE.Group();
         const model = ModManager.skinModels.get(skinId).clone();
         
         // Handle model-specific scaling and orientation
         if (skinId === 'viper') {
-            model.scale.setScalar(1.2); // Make the viper head more prominent
-            model.position.y = 0.2; // LIFT IT: Move model up so it's not stuck in the ground
-            // If the model is "standing up" (Y-up), rotate it to face forward (Z-forward)
-            model.rotation.x = -Math.PI / 2; 
+            // The model is a full snake. We scale it so one "segment" of its body
+            // fits roughly into one grid cell.
+            model.scale.setScalar(0.4); 
             
+            // FIX: Lift the model up so it's not stuck in the ground.
+            // The grid is at Y=0, segments are at Y=0.5.
+            // If the model is centered, lifting its local Y within the group 
+            // will place it on top of the grid.
+            model.position.y = 0.1; 
+            
+            // FIX: Rotation. If it was stuck, it might have been vertical.
+            // Reset to default and use lookAt on the container.
+            model.rotation.set(0, 0, 0);
+
             if (dir) {
-                // Ensure the head faces the movement direction
-                // Since position is (0,0,0) here, looking at the direction vector works
-                modelContainer.lookAt(dir.x, dir.y, dir.z);
+                // Point the container in the movement direction
+                const lookTarget = new THREE.Vector3().copy(modelContainer.position).add(dir);
+                modelContainer.lookAt(lookTarget);
             }
         }
 
@@ -3053,7 +3062,7 @@ function update() {
 
         // Update new tail geometry if realistic
         const currentSkin = SKINS.find(s => s.id === currentSkinId);
-        if (currentSkin.isRealistic && snake.length > 0) {
+        if ((currentSkin.isRealistic || currentSkin.modelPath) && snake.length > 0) {
             const lastSegment = snake[snake.length - 1];
             scene.remove(lastSegment.mesh);
             // Remove mixer for old tail
@@ -3071,7 +3080,7 @@ function update() {
 
         // Update new tail geometry if realistic
         const currentSkin = SKINS.find(s => s.id === currentSkinId);
-        if (currentSkin.isRealistic && snake.length > 0) {
+        if ((currentSkin.isRealistic || currentSkin.modelPath) && snake.length > 0) {
             const lastSegment = snake[snake.length - 1];
             scene.remove(lastSegment.mesh);
             // Remove mixer for old tail
@@ -3089,7 +3098,7 @@ function update() {
     // Update old head to body if realistic (otherwise just update material)
     const currentSkin = SKINS.find(s => s.id === currentSkinId);
     if (snake.length > 0) {
-        if (currentSkin.isRealistic) {
+        if (currentSkin.isRealistic || currentSkin.modelPath) {
             const oldHead = snake[0];
             scene.remove(oldHead.mesh);
             // Remove mixer for the old head group
