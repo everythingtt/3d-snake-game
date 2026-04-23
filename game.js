@@ -1417,7 +1417,7 @@ const SKINS = [
     { id: 'gold', nameKey: 'golden_midas', head: 0xffff00, body: 0xaa8800, price: 250 },
     { id: 'void', nameKey: 'void_walker', head: 0xff00ff, body: 0x440044, price: 500 },
     { id: 'matrix', nameKey: 'matrix_code', head: 0x00ff00, body: 0x003300, emissive: 0x00ff00, price: 1000 },
-    { id: 'viper', nameKey: 'viper_realistic', head: 0x228b22, body: 0x1a4a1a, price: 5000, isRealistic: true }
+    { id: 'viper', nameKey: 'viper_realistic', head: 0x228b22, body: 0x1a4a1a, price: 5000, isRealistic: true, modelPath: '3D Models/Viper Realistic/scene.gltf' }
 ];
 
 const BACKGROUNDS = [
@@ -1546,6 +1546,25 @@ const Notifications = {
 const ModManager = {
     mods: [],
     assets: new Map(), // Store loaded textures/models for mods
+    skinModels: new Map(), // Store pre-loaded skin models
+    skinAnimations: new Map(), // Store animations for skin models
+
+    async loadSkinModels() {
+        for (const skin of SKINS) {
+            if (skin.modelPath) {
+                try {
+                    const gltf = await gltfLoader.loadAsync(skin.modelPath);
+                    this.skinModels.set(skin.id, gltf.scene);
+                    if (gltf.animations && gltf.animations.length > 0) {
+                        this.skinAnimations.set(skin.id, gltf.animations);
+                    }
+                    console.log(`Loaded skin model and animations: ${skin.id}`);
+                } catch (e) {
+                    console.error(`Failed to load skin model ${skin.id}:`, e);
+                }
+            }
+        }
+    },
 
     async loadMods() {
         try {
@@ -1815,6 +1834,8 @@ const Security = {
 
 // Game state
 let snake = [];
+let snakeMixers = []; // Track animation mixers for snake segments
+let shopMixers = []; // Track animation mixers for shop preview
 let direction = new THREE.Vector3(1, 0, 0);
 let nextDirection = new THREE.Vector3(1, 0, 0);
 let food = null;
@@ -2225,6 +2246,8 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerH
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.getElementById('game-container').appendChild(renderer.domElement);
+
+const clock = new THREE.Clock(); // For animations
 
 const controls = new OrbitControls(camera, renderer.domElement);
 camera.position.set(0, 10, 20);
@@ -2681,9 +2704,42 @@ const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
 const tongueGeometry = new THREE.BoxGeometry(0.1, 0.05, 0.4);
 const tongueMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 
-function createSnakeMesh(type, skinId, dir = null) {
+function createSnakeMesh(type, skinId, dir = null, isShop = false) {
     const skin = SKINS.find(s => s.id === skinId) || SKINS[0];
     const materials = getSkinMaterials(skinId);
+    
+    // Check for pre-loaded 3D model skin
+    if (ModManager.skinModels.has(skinId)) {
+        const model = ModManager.skinModels.get(skinId).clone();
+        
+        // Handle model-specific scaling and orientation
+        if (skinId === 'viper') {
+            model.scale.setScalar(0.5); // Adjust scale to fit grid
+            if (dir) {
+                const target = new THREE.Vector3().copy(dir);
+                model.lookAt(target);
+            }
+        }
+
+        // Initialize animations if they exist
+        const animations = ModManager.skinAnimations.get(skinId);
+        if (animations) {
+            const mixer = new THREE.AnimationMixer(model);
+            const actions = {};
+            animations.forEach(clip => {
+                actions[clip.name] = mixer.clipAction(clip);
+            });
+            
+            const mixerData = { mixer, actions, skinId, type };
+            if (isShop) shopMixers.push(mixerData);
+            else snakeMixers.push(mixerData);
+            
+            // Set initial animation
+            updateSegmentAnimation(mixerData);
+        }
+        
+        return model;
+    }
     
     if (skin.isRealistic) {
         if (type === 'head') {
@@ -2749,9 +2805,37 @@ function getSkinMaterials(skinId) {
     };
 }
 
+function updateSegmentAnimation(mixerData) {
+    const { actions, skinId } = mixerData;
+    if (skinId === 'viper') {
+        // Stop all current actions
+        Object.values(actions).forEach(action => action.stop());
+
+        if (isPaused || !gameStarted || isMainMenu) {
+            // Idle mode
+            if (actions['SnakeBones|SnakeSearch.001']) {
+                actions['SnakeBones|SnakeSearch.001'].play();
+            }
+        } else {
+            // Moving mode - speed check
+            const isFast = moveInterval <= 150; // Threshold for "fast" speed
+            if (isFast && actions['SnakeBones|SnakeMove1']) {
+                actions['SnakeBones|SnakeMove1'].play();
+            } else if (actions['SnakeBones|SnakeMove2']) {
+                actions['SnakeBones|SnakeMove2'].play();
+            }
+        }
+    }
+}
+
+function updateAllSnakeAnimations() {
+    snakeMixers.forEach(mixerData => updateSegmentAnimation(mixerData));
+}
+
 function initGame() {
     snake.forEach(segment => scene.remove(segment.mesh));
     snake = [];
+    snakeMixers = []; // Clear old mixers
     if (food) scene.remove(food.mesh);
     food = null;
     if (coin) scene.remove(coin.mesh);
@@ -2870,6 +2954,7 @@ function update() {
         // Coins are now separate, food only gives score
         updateUI();
         moveInterval = Math.max(MIN_MOVE_INTERVAL, INITIAL_MOVE_INTERVAL - Math.floor(score / 50) * 10);
+        updateAllSnakeAnimations(); // Update animations for new speed
         audioManager.playEatSound();
         const pColor = BACKGROUNDS.find(b => b.id === currentBgId)?.particleColor || 0xff0000;
         for (let i = 0; i < 15; i++) createParticle(food.pos, pColor);
@@ -2886,12 +2971,16 @@ function update() {
         // When eating a coin, we still need to move, so we remove the tail
         const tail = snake.pop();
         scene.remove(tail.mesh);
+        // Remove mixer for this segment if it exists
+        snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== tail.mesh);
 
         // Update new tail geometry if realistic
         const currentSkin = SKINS.find(s => s.id === currentSkinId);
         if (currentSkin.isRealistic && snake.length > 0) {
             const lastSegment = snake[snake.length - 1];
             scene.remove(lastSegment.mesh);
+            // Remove mixer for old tail
+            snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== lastSegment.mesh);
             lastSegment.mesh = createSnakeMesh('tail', currentSkinId);
             lastSegment.mesh.position.copy(lastSegment.pos);
             scene.add(lastSegment.mesh);
@@ -2900,12 +2989,16 @@ function update() {
         // Normal move: remove tail
         const tail = snake.pop();
         scene.remove(tail.mesh);
+        // Remove mixer for this segment if it exists
+        snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== tail.mesh);
 
         // Update new tail geometry if realistic
         const currentSkin = SKINS.find(s => s.id === currentSkinId);
         if (currentSkin.isRealistic && snake.length > 0) {
             const lastSegment = snake[snake.length - 1];
             scene.remove(lastSegment.mesh);
+            // Remove mixer for old tail
+            snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== lastSegment.mesh);
             lastSegment.mesh = createSnakeMesh('tail', currentSkinId);
             lastSegment.mesh.position.copy(lastSegment.pos);
             scene.add(lastSegment.mesh);
@@ -3118,6 +3211,7 @@ document.getElementById('tab-backgrounds').onclick = () => {
 
 function updateShopPreview() {
     if (shopSnake) shopScene.remove(shopSnake);
+    shopMixers = []; // Clear old mixers
     const group = new THREE.Group();
     const materials = getSkinMaterials(currentSkinId);
     for (let i = 0; i < 3; i++) {
@@ -3125,12 +3219,13 @@ function updateShopPreview() {
         if (i === 0) type = 'head';
         else if (i === 2) type = 'tail';
         
-        const mesh = createSnakeMesh(type, currentSkinId, new THREE.Vector3(1, 0, 0));
+        const mesh = createSnakeMesh(type, currentSkinId, new THREE.Vector3(1, 0, 0), true);
         mesh.position.set(-i, 0, 0);
         group.add(mesh);
     }
     shopSnake = group;
     shopScene.add(shopSnake);
+    shopMixers.forEach(m => updateSegmentAnimation(m));
 }
 
 function updateShopPreviewBg() {
@@ -3377,8 +3472,10 @@ function animateDecorativeObjects(objects) {
 function animateShop() {
     if (document.getElementById('shop-overlay').style.display !== 'none') {
         requestAnimationFrame(animateShop);
+        const delta = clock.getDelta();
         if (shopSnake) shopSnake.rotation.y += 0.02;
         animateDecorativeObjects(shopDecorativeObjects);
+        shopMixers.forEach(m => m.mixer.update(delta));
         shopRenderer.render(shopScene, shopCamera);
     }
 }
@@ -3405,6 +3502,7 @@ function togglePause() {
     } else {
         audioManager.startBackgroundMusic();
     }
+    updateAllSnakeAnimations();
 }
 
 document.getElementById('mod-picker-btn').onclick = () => {
@@ -3487,6 +3585,7 @@ document.getElementById('start-btn').onclick = () => {
     gameStarted = true;
     updateBackground(); // Ensure background is correct for game start
     initGame();
+    updateAllSnakeAnimations(); // Set correct initial animations
 };
 
 document.getElementById('mute-btn').onclick = () => {
@@ -3868,6 +3967,7 @@ const MenuManager = {
 
 function animate() {
      requestAnimationFrame(animate);
+     const delta = clock.getDelta();
      
      if (isMainMenu) {
          // Menu animations
@@ -3900,6 +4000,7 @@ function animate() {
      update();
      updateParticles();
      animateDecorativeObjects(decorativeObjects);
+     snakeMixers.forEach(m => m.mixer.update(delta));
      
      if (isFreeCamera) {
          // WASD movement for free camera
@@ -4065,6 +4166,7 @@ const Consent = {
         // Clear cached language for fresh detection
         Security.save('snake3d_lang_cache', null);
         detectLanguage();
+        await ModManager.loadSkinModels();
         ModManager.loadMods();
     }
 };
@@ -4077,8 +4179,11 @@ document.getElementById('accept-consent-btn').onclick = () => {
 // Initialize
 if (Consent.check()) {
     detectLanguage();
-    ModManager.loadMods();
-    MenuManager.init();
+    (async () => {
+        await ModManager.loadSkinModels();
+        ModManager.loadMods();
+        MenuManager.init();
+    })();
 } else {
     // Lock start button if consent is not verified
     const startBtn = document.getElementById('start-btn');
