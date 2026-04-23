@@ -2796,13 +2796,15 @@ function createSnakeMesh(type, skinId, dir = null, isShop = false) {
         // Initialize animations if they exist
         const animations = ModManager.skinAnimations.get(skinId);
         if (animations) {
-            const mixer = new THREE.AnimationMixer(modelContainer);
+            // FIX: Use the 'model' (the GLTF scene) as the root for the mixer.
+            // This ensures the animation tracks can find their target bones correctly.
+            const mixer = new THREE.AnimationMixer(model);
             const actions = {};
             animations.forEach(clip => {
                 actions[clip.name] = mixer.clipAction(clip);
             });
             
-            const mixerData = { mixer, actions, skinId, type };
+            const mixerData = { mixer, actions, skinId, type, model };
             if (isShop) shopMixers.push(mixerData);
             else snakeMixers.push(mixerData);
             
@@ -3053,7 +3055,7 @@ function update() {
         const tail = snake.pop();
         scene.remove(tail.mesh);
         // Remove mixer for this segment if it exists
-        snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== tail.mesh);
+        snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== tail.mesh && m.model !== tail.mesh);
 
         // Update new tail geometry if realistic
         const currentSkin = SKINS.find(s => s.id === currentSkinId);
@@ -3061,7 +3063,7 @@ function update() {
             const lastSegment = snake[snake.length - 1];
             scene.remove(lastSegment.mesh);
             // Remove mixer for old tail
-            snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== lastSegment.mesh);
+            snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== lastSegment.mesh && m.model !== lastSegment.mesh);
             lastSegment.mesh = createSnakeMesh('tail', currentSkinId);
             lastSegment.mesh.position.copy(lastSegment.pos);
             scene.add(lastSegment.mesh);
@@ -3071,7 +3073,7 @@ function update() {
         const tail = snake.pop();
         scene.remove(tail.mesh);
         // Remove mixer for this segment if it exists
-        snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== tail.mesh);
+        snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== tail.mesh && m.model !== tail.mesh);
 
         // Update new tail geometry if realistic
         const currentSkin = SKINS.find(s => s.id === currentSkinId);
@@ -3079,7 +3081,7 @@ function update() {
             const lastSegment = snake[snake.length - 1];
             scene.remove(lastSegment.mesh);
             // Remove mixer for old tail
-            snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== lastSegment.mesh);
+            snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== lastSegment.mesh && m.model !== lastSegment.mesh);
             lastSegment.mesh = createSnakeMesh('tail', currentSkinId);
             lastSegment.mesh.position.copy(lastSegment.pos);
             scene.add(lastSegment.mesh);
@@ -3097,7 +3099,7 @@ function update() {
             const oldHead = snake[0];
             scene.remove(oldHead.mesh);
             // Remove mixer for the old head group
-            snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== oldHead.mesh);
+            snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== oldHead.mesh && m.model !== oldHead.mesh);
             oldHead.mesh = createSnakeMesh('body', currentSkinId);
             oldHead.mesh.position.copy(oldHead.pos);
             scene.add(oldHead.mesh);
