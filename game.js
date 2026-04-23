@@ -1820,6 +1820,7 @@ let nextDirection = new THREE.Vector3(1, 0, 0);
 let food = null;
 let coin = null;
 let score = 0;
+let githubOrbs = Security.load('snake3d_orbs_secure', 0);
 let highScore = Security.load('snake3d_highscore_secure', 0);
 let coins = Security.load('snake3d_coins_secure', 0);
 let ownedSkins = JSON.parse(Security.load('snake3d_owned_skins_secure', '["classic"]'));
@@ -3039,11 +3040,13 @@ function updateUI() {
     document.getElementById('score').innerText = score;
     document.getElementById('high-score').innerText = highScore;
     document.getElementById('coins').innerText = coins;
+    document.getElementById('github-orbs').innerText = githubOrbs;
     document.getElementById('menu-high-score').innerText = highScore;
     document.getElementById('menu-coins').innerText = coins;
     
     // Secure saving
     Security.save('snake3d_coins_secure', coins);
+    Security.save('snake3d_orbs_secure', githubOrbs);
 }
 
 function endGame(reason = null) {
@@ -3941,6 +3944,7 @@ const MenuManager = {
         isMainMenu = true;
         // Ensure visibility
         document.getElementById('overlay').style.display = 'none';
+        AdManager.hide(); // Hide ads in main menu
     },
 
     toggleModal(id, show) {
@@ -3984,6 +3988,7 @@ const MenuManager = {
         document.getElementById('info').style.visibility = 'visible';
         audioManager.init();
         audioManager.updateMusicTheme(currentBgId);
+        AdManager.show(); // Show ads when game starts
     }
 };
 
@@ -4166,6 +4171,79 @@ window.addEventListener('resize', () => {
 });
 
 animate();
+
+// Ad Management
+const AdManager = {
+    ads: ['assets/multiplayer-ad.png', 'assets/multiplayer-ad-2.png'],
+    currentIndex: 0,
+    interval: null,
+    checkInterval: null,
+
+    show() {
+        const container = document.getElementById('ad-container');
+        if (!container) return;
+        container.style.display = 'block';
+        this.rotate();
+        this.interval = setInterval(() => this.rotate(), 10000); // Rotate every 10s
+        
+        // Start Anti-Adblock check
+        this.startAntiAdblock();
+    },
+
+    hide() {
+        const container = document.getElementById('ad-container');
+        if (container) container.style.display = 'none';
+        if (this.interval) clearInterval(this.interval);
+        if (this.checkInterval) clearInterval(this.checkInterval);
+    },
+
+    rotate() {
+        const img = document.getElementById('current-ad');
+        if (!img) return;
+        this.currentIndex = (this.currentIndex + 1) % this.ads.length;
+        img.src = this.ads[this.currentIndex];
+    },
+
+    startAntiAdblock() {
+        if (this.checkInterval) clearInterval(this.checkInterval);
+        
+        const check = () => {
+            const container = document.getElementById('ad-container');
+            const overlay = document.getElementById('adblock-overlay');
+            const img = document.getElementById('current-ad');
+            
+            if (!container || !img) return;
+
+            // Detection logic
+            const isBlocked = 
+                container.offsetParent === null || // Hidden by display: none
+                container.offsetHeight === 0 ||    // Hidden by height
+                window.getComputedStyle(container).display === 'none' ||
+                window.getComputedStyle(container).visibility === 'hidden' ||
+                img.naturalWidth === 0;            // Image failed to load (blocked resource)
+
+            if (isBlocked && gameStarted && !gameOver) {
+                overlay.style.display = 'flex';
+                isPaused = true; // Force pause
+                audioManager.stopBackgroundMusic();
+                Notifications.show("SECURITY ALERT: Adblocker interference detected.", "error");
+            } else {
+                overlay.style.display = 'none';
+            }
+        };
+
+        this.checkInterval = setInterval(check, 2000); // Check every 2s
+        
+        // Setup refresh button
+        const refreshBtn = document.getElementById('refresh-ad-btn');
+        if (refreshBtn) {
+            refreshBtn.onclick = () => {
+                audioManager.playUiClick();
+                location.reload();
+            };
+        }
+    }
+};
 
 // Global Error Handling
 window.onerror = function(message, source, lineno, colno, error) {

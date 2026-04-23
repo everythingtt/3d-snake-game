@@ -61,6 +61,110 @@
     margin-top: 1rem;
 }
 
+/* Ads System */
+.ad-container-bottom {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    width: 250px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid #00ff00;
+    border-radius: 5px;
+    overflow: hidden;
+    z-index: 150;
+    pointer-events: auto;
+    animation: adSlideIn 0.5s ease-out;
+}
+
+.ad-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    filter: brightness(0.8) contrast(1.2);
+    transition: filter 0.3s;
+}
+
+.ad-image:hover {
+    filter: brightness(1);
+}
+
+.ad-label {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: #00ff00;
+    color: #000;
+    font-size: 0.6rem;
+    padding: 2px 5px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+@keyframes adSlideIn {
+    from { transform: translateX(-110%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* GitHub Orbs UI */
+.orbs-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: rgba(71, 140, 191, 0.1);
+    border: 1px solid rgba(71, 140, 191, 0.3);
+    border-radius: 8px;
+    text-align: left;
+}
+
+.orb-icon-small {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+
+.release-countdown {
+    margin-top: 2rem;
+    font-weight: 900;
+    color: #00ff00;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    animation: pulse 2s infinite;
+}
+
+#adblock-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.98);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 4000; /* Highest priority */
+    backdrop-filter: blur(15px);
+}
+
+#adblock-modal .modal-content {
+    border-color: #ff0000;
+    box-shadow: 0 0 50px rgba(255, 0, 0, 0.3);
+}
+
+#adblock-modal .glitch-text {
+    text-shadow: 2px 2px #ff0000, -2px -2px #0000ff;
+}
+
+#adblock-modal .engine-separator {
+    color: #ff0000;
+}
+
+#adblock-modal strong {
+    color: #ff0000;
+    text-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+}
+
 body {
     margin: 0;
     overflow: hidden;

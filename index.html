@@ -40,7 +40,7 @@
     <div id="info">
         <h1 data-t="game_title">3D Snake Game</h1>
         <p data-t="controls">Use Arrow Keys to move</p>
-        <p><span data-t="score">Score</span>: <span id="score">0</span> | <span data-t="high">High</span>: <span id="high-score">0</span> | <span data-t="coins">Coins</span>: <span id="coins">0</span></p>
+        <p><span data-t="score">Score</span>: <span id="score">0</span> | <span data-t="high">High</span>: <span id="high-score">0</span> | <span data-t="coins">Coins</span>: <span id="coins">0</span> | <span data-t="github_orbs">GitHub Orbs</span>: <span id="github-orbs">0</span></p>
         <div class="hud-controls">
             <button id="mod-picker-btn" class="icon-btn" style="display: none;">🎨</button>
             <button id="perf-btn" class="icon-btn">⚡</button>
@@ -107,6 +107,7 @@
                     </button>
                 </div>
                 <p class="small-text-muted">Fixes for current 3D modeling issues and all future extended features will only be available in the Godot version. The native release will offer superior performance and advanced physics.</p>
+                <p class="release-countdown">EXPECTED RELEASE: APRIL 30, 2026</p>
             </div>
         </div>
     </div>
@@ -174,6 +175,10 @@
             <div class="placeholder-notice">
                 <p>Multiplayer events coming soon!</p>
                 <p class="small">Create an account to track stats and compete globally.</p>
+                <div class="orbs-info">
+                    <img src="assets/github-orb.png" class="orb-icon-small">
+                    <p>Earn <strong>GitHub Orbs</strong> by creating mods or contributing to the web version! Use them to unlock exclusive skins in future multiplayer events.</p>
+                </div>
             </div>
             <form id="account-form">
                 <div class="input-group">
@@ -315,6 +320,32 @@
     </div>
 
     <div id="game-container"></div>
+    
+    <!-- Multiplayer Ads -->
+    <div id="ad-container" class="ad-container-bottom" style="display: none;">
+        <img id="current-ad" src="assets/multiplayer-ad.png" class="ad-image">
+        <span class="ad-label">ADVERTISEMENT</span>
+    </div>
+
+    <!-- Anti-Adblocker Overlay -->
+    <div id="adblock-overlay" style="display: none;">
+        <div id="adblock-modal" class="modal-3d">
+            <div class="modal-content">
+                <h2 class="glitch-text" data-text="ADBLOCK DETECTED">ADBLOCK DETECTED</h2>
+                <p class="announcement-text">Multiplayer infrastructure requires funding. To support the Godot transition and multiplayer development, please <strong>DISABLE YOUR ADBLOCKER</strong>.</p>
+                <div class="security-warning">
+                    ⚠️ <strong>SYSTEM ACCESS DENIED:</strong> Access to the legacy web version is restricted while ads are blocked.
+                </div>
+                <div class="menu-buttons">
+                    <button id="refresh-ad-btn" class="menu-nav-btn">
+                        <span class="btn-text">RE-VALIDATE SYSTEM</span>
+                    </button>
+                </div>
+                <p class="small-text-muted">We do not use tracking cookies or sell your data. We only use these ads to fund our move to Godot.</p>
+            </div>
+        </div>
+    </div>
+
     <div id="camera-swipe-area" style="display: none;"></div>
     <div id="notification-container"></div>
     <div id="glitch-overlay" style="display: none;"></div>
