@@ -2168,6 +2168,7 @@ const viperMixers = new Set();
 async function loadViperModel() {
     if (viperModel) return; 
     try {
+        console.log("Starting to load Viper Realistic model...");
         const gltf = await gltfLoader.loadAsync('3D%20Models/Viper%20Realistic/scene.gltf');
         viperModel = gltf.scene;
         viperAnimations = gltf.animations;
@@ -2175,12 +2176,9 @@ async function loadViperModel() {
         
         // Refresh scene if using viper skin
         if (currentSkinId === 'viper') {
+            console.log("Refreshing menu scene with new Viper model...");
             if (isMainMenu) {
                 MenuManager.createMenuScene();
-            } else if (gameStarted && !gameOver) {
-                // For an active game, we'd need to replace segments, 
-                // but usually the model loads during the loading screen.
-                // If it loads during a game, next segments spawned will use the model.
             }
             
             // Refresh shop if open
@@ -2189,7 +2187,8 @@ async function loadViperModel() {
             }
         }
     } catch (e) {
-        console.warn("Failed to load Viper Realistic model:", e);
+        console.error("CRITICAL: Failed to load Viper Realistic model:", e);
+        Notifications.show(`System Alert: Failed to load Viper model. ${e.message}`, "error");
     }
 }
 
@@ -3827,6 +3826,12 @@ const MenuManager = {
     },
 
     setupEventListeners() {
+        // Prevent form submission
+        const accountForm = document.getElementById('account-form');
+        if (accountForm) {
+            accountForm.onsubmit = (e) => e.preventDefault();
+        }
+
         document.getElementById('main-singleplayer-btn').onclick = () => this.startSinglePlayer();
         document.getElementById('main-settings-btn').onclick = () => this.toggleModal('main-settings-modal', true);
         document.getElementById('main-account-btn').onclick = () => this.toggleModal('main-account-modal', true);

@@ -22,6 +22,9 @@
     <meta name="twitter:description" content="Control the snake in a 3D starfield. High scores, particle effects, and procedural music!">
     <meta name="twitter:image" content="favicon/favicon.png">
 
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://unpkg.com https://ipapi.co https://ip-api.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://unpkg.com; connect-src 'self' https://unpkg.com https://ipapi.co https://ip-api.com; worker-src 'self' blob:;">
+
     <link rel="stylesheet" href="style.css?v=1.0.1">
     <script type="importmap">
         {
@@ -41,6 +44,7 @@
         <div class="hud-controls">
             <button id="mod-picker-btn" class="icon-btn" style="display: none;">🎨</button>
             <button id="perf-btn" class="icon-btn">⚡</button>
+            <button id="account-btn" class="icon-btn">👤</button>
             <button id="settings-btn" class="icon-btn">⚙️</button>
             <button id="pause-btn" class="icon-btn">⏸</button>
             <button id="mute-btn" class="icon-btn">🔊</button>
@@ -151,7 +155,7 @@
                 <p>Multiplayer events coming soon!</p>
                 <p class="small">Create an account to track stats and compete globally.</p>
             </div>
-            <form id="account-form" onsubmit="return false;">
+            <form id="account-form">
                 <div class="input-group">
                     <input type="text" placeholder="Username" id="acc-username" autocomplete="username">
                     <input type="password" placeholder="Password" id="acc-password" autocomplete="current-password">
