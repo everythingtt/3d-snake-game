@@ -1163,6 +1163,19 @@ button {
     color: #ffcc00;
 }
 
+.discontinued-note {
+    font-size: 0.65rem;
+    color: #ff4444;
+    font-weight: bold;
+    margin: 5px 0;
+    line-height: 1.2;
+    text-transform: uppercase;
+    background: rgba(255, 0, 0, 0.1);
+    padding: 4px;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 0, 0, 0.2);
+}
+
 button {
     background: #00ff00;
     color: #000;

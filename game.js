@@ -46,7 +46,8 @@ const TRANSLATIONS = {
         sfx_volume: "Sound Effects",
         free_camera: "Free Camera Mode",
         game_won: "VICTORY! You have conquered the galaxy!",
-        viper_realistic: "Viper Realistic"
+        viper_realistic: "Viper Realistic",
+        discontinued_notice: "DISCONTINUED DUE TO BROWSER LIMITATIONS. CONTAINS BUGS"
     },
     ar: {
         game_title: "لعبة الثعبان ثلاثية الأبعاد",
@@ -3182,7 +3183,18 @@ function updateShopList() {
         const item = document.createElement('div');
         const name = (skin.nameKey && TRANSLATIONS[currentLang][skin.nameKey]) || skin.name || skin.id;
         item.className = `skin-item ${ownedSkins.includes(skin.id) ? '' : 'locked'} ${currentSkinId === skin.id ? 'selected' : ''}`;
-        item.innerHTML = `<h3>${name}</h3><div class="price">${ownedSkins.includes(skin.id) ? ownedText : skin.price + ' ' + coinsText}</div>`;
+        
+        let discontinuedNote = '';
+        if (skin.id === 'viper') {
+            const note = TRANSLATIONS[currentLang].discontinued_notice || "DISCONTINUED DUE TO BROWSER LIMITATIONS. CONTAINS BUGS";
+            discontinuedNote = `<div class="discontinued-note">${note}</div>`;
+        }
+
+        item.innerHTML = `
+            <h3>${name}</h3>
+            ${discontinuedNote}
+            <div class="price">${ownedSkins.includes(skin.id) ? ownedText : skin.price + ' ' + coinsText}</div>
+        `;
         item.onclick = () => selectSkin(skin);
         item.onmouseenter = () => audioManager.playUiHover();
         skinList.appendChild(item);
