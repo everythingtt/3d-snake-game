@@ -4358,77 +4358,72 @@ function drawComparison(canvasId, mode) {
     const w = canvas.width;
     const h = canvas.height;
 
-    // Background Gradient
-    const bgGrad = ctx.createRadialGradient(w/2, h/2, 10, w/2, h/2, w/2);
-    bgGrad.addColorStop(0, '#111');
-    bgGrad.addColorStop(1, '#000');
-    ctx.fillStyle = bgGrad;
+    // Background
+    ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, w, h);
 
-    // Perspective Grid
-    ctx.strokeStyle = mode === 'pc' ? 'rgba(0, 255, 0, 0.2)' : 'rgba(0, 255, 0, 0.05)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= w; i += 20) {
-        ctx.beginPath();
-        ctx.moveTo(i, h);
-        ctx.lineTo(w/2 + (i - w/2) * 0.5, h * 0.4);
-        ctx.stroke();
-    }
-    for (let i = 0; i < 10; i++) {
-        const y = h - (i * i * 0.8);
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-    }
-
     if (mode === 'pc') {
-        // High fidelity snake (Realistic 3D style)
-        ctx.save();
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#00ff00';
+        // --- PC: CINEMATIC 3D VIEW ---
+        // Space Background
+        const grad = ctx.createRadialGradient(w*0.8, h*0.2, 5, w*0.8, h*0.2, 50);
+        grad.addColorStop(0, '#ffffaa'); // Sun
+        grad.addColorStop(0.1, '#552');
+        grad.addColorStop(1, '#000');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
         
-        // Draw body segments with gradients for 3D effect
-        for(let i = 0; i < 4; i++) {
-            const x = 110 - i * 18;
-            const y = 60 + Math.sin(i * 0.5) * 5;
-            const radius = 10 - i * 1.5;
-            
-            const grad = ctx.createRadialGradient(x-2, y-2, 2, x, y, radius);
-            grad.addColorStop(0, '#4f4');
-            grad.addColorStop(1, '#151');
-            
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        
-        // Head details
-        ctx.fillStyle = '#fff';
+        // Earth in background
+        ctx.fillStyle = '#1144aa';
         ctx.beginPath();
-        ctx.arc(114, 57, 2, 0, Math.PI * 2);
-        ctx.arc(114, 63, 2, 0, Math.PI * 2);
+        ctx.arc(30, 30, 15, 0, Math.PI*2);
         ctx.fill();
-        
-        // Glowing tongue
-        ctx.strokeStyle = '#f00';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(120, 60);
-        ctx.lineTo(130, 60);
-        ctx.stroke();
-        ctx.restore();
+
+        // Perspective Grid
+        ctx.strokeStyle = 'rgba(0, 255, 0, 0.3)';
+        for(let i=-100; i<=200; i+=20) {
+            ctx.beginPath();
+            ctx.moveTo(i, h);
+            ctx.lineTo(w/2 + (i-w/2)*0.2, h*0.3);
+            ctx.stroke();
+        }
+
+        // Realistic Snake (Viper)
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#00ff00';
+        for(let i=0; i<5; i++) {
+            const x = 120 - i*15;
+            const y = 80 + Math.sin(i*0.8)*3;
+            const r = 8 - i;
+            const sGrad = ctx.createRadialGradient(x-2, y-2, 1, x, y, r);
+            sGrad.addColorStop(0, '#5f5');
+            sGrad.addColorStop(1, '#131');
+            ctx.fillStyle = sGrad;
+            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+        }
+        // Red Food (3D)
+        const fGrad = ctx.createRadialGradient(140, 75, 1, 142, 77, 5);
+        fGrad.addColorStop(0, '#f55'); fGrad.addColorStop(1, '#500');
+        ctx.fillStyle = fGrad;
+        ctx.beginPath(); ctx.arc(142, 77, 5, 0, Math.PI*2); ctx.fill();
     } else {
-        // Low fidelity snake (Flat 2D style)
-        ctx.fillStyle = '#00ff00';
-        ctx.fillRect(90, 50, 15, 15);
-        ctx.fillStyle = '#008800';
-        ctx.fillRect(75, 50, 15, 15);
-        ctx.fillRect(60, 50, 15, 15);
+        // --- MOBILE: FLAT BIRD'S EYE ---
+        ctx.strokeStyle = '#222';
+        for(let i=0; i<w; i+=15) { ctx.strokeRect(i, 0, 1, h); }
+        for(let i=0; i<h; i+=15) { ctx.strokeRect(0, i, w, 1); }
         
-        ctx.strokeStyle = '#333';
-        ctx.strokeRect(10, 10, w - 20, h - 20);
+        // Boxy Snake
+        ctx.fillStyle = '#0f0';
+        ctx.fillRect(90, 60, 14, 14); // Head
+        ctx.fillStyle = '#080';
+        ctx.fillRect(75, 60, 14, 14);
+        ctx.fillRect(60, 60, 14, 14);
+        
+        // Simple Food
+        ctx.fillStyle = '#f00';
+        ctx.fillRect(120, 60, 10, 10);
+        
+        ctx.strokeStyle = '#444';
+        ctx.strokeRect(5, 5, w-10, h-10);
     }
 }
 
