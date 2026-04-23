@@ -290,6 +290,21 @@ body {
     overflow-y: auto;
 }
 
+.notice-box {
+    background: rgba(0, 255, 0, 0.1);
+    border-left: 4px solid #00ff00;
+    padding: 10px 15px;
+    margin: 1rem 0;
+    text-align: left;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: #fff;
+}
+
+.notice-box p {
+    margin: 0;
+}
+
 .consent-options {
     margin: 1.5rem 0;
     padding: 1rem;

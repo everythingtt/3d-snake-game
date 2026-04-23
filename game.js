@@ -3586,6 +3586,13 @@ document.getElementById('start-btn').onclick = () => {
     updateBackground(); // Ensure background is correct for game start
     initGame();
     updateAllSnakeAnimations(); // Set correct initial animations
+    
+    // Experience Tip for PC users
+    if (!isTouchDevice) {
+        setTimeout(() => {
+            Notifications.show("PRO TIP: PC version features dynamic trailing camera!", "warning");
+        }, 2000);
+    }
 };
 
 document.getElementById('mute-btn').onclick = () => {
