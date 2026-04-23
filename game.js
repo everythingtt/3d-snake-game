@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 // Global Version & Cache Management
 const VersionManager = {
-    VERSION: '1.2.8', // Master version - update this for global cache bust
+    VERSION: '1.2.9', // Master version - update this for global cache bust
     CACHE_KEY: 'snake3d_deployed_version',
 
     init() {
@@ -2777,17 +2777,21 @@ function createSnakeMesh(type, skinId, dir = null, isShop = false) {
         
         // Handle model-specific scaling and orientation
         if (skinId === 'viper') {
-            // The model is a full snake. We scale it so the head fits into one grid cell.
-            model.scale.setScalar(0.8); 
+            // FIX: Scaling. Sketchfab models often have a 100x scale.
+            // 0.01 makes it fit perfectly in our 1-unit grid cells.
+            model.scale.setScalar(0.01); 
             
-            // FIX: Ensure it sits on top of the ground
-            model.position.y = 0; 
+            // FIX: Rotation. Model was standing up.
+            // Rotate 90 degrees on X to lay it flat on the grid.
+            model.rotation.x = Math.PI / 2;
             
-            // Standard orientation: ensure it's flat on the ground plane
-            model.rotation.set(0, 0, 0);
+            // FIX: Vertical Position. 
+            // The container is at Y=0.5. We lower the model within it 
+            // so its belly sits on the grid floor.
+            model.position.y = -0.5; 
 
             if (dir) {
-                // Ensure the container faces the movement direction
+                // Point the container in the movement direction
                 const lookTarget = new THREE.Vector3().copy(modelContainer.position).add(dir);
                 modelContainer.lookAt(lookTarget);
             }
@@ -2804,7 +2808,7 @@ function createSnakeMesh(type, skinId, dir = null, isShop = false) {
                 actions[clip.name] = mixer.clipAction(clip);
             });
             
-            const mixerData = { mixer, actions, skinId, type, model };
+            const mixerData = { mixer, actions, skinId, type, model, container: modelContainer };
             if (isShop) shopMixers.push(mixerData);
             else snakeMixers.push(mixerData);
             
@@ -2816,11 +2820,15 @@ function createSnakeMesh(type, skinId, dir = null, isShop = false) {
         return modelContainer;
     }
     
-    // Specific stylized segments for Viper (to replace old geometric look)
+    // Specific stylized segments for Viper (to create a cohesive realistic body)
     if (skinId === 'viper' && (type === 'body' || type === 'tail')) {
         const size = type === 'tail' ? 0.35 : 0.45;
         const geom = new THREE.SphereGeometry(size, 16, 16);
+        // Flatten the sphere to look more like a snake's slithering body segment
+        geom.scale(1, 0.7, 1); 
         const mesh = new THREE.Mesh(geom, materials.body);
+        // Lower slightly to match the head's height
+        mesh.position.y = -0.1; 
         return mesh;
     }
     
@@ -3055,7 +3063,7 @@ function update() {
         const tail = snake.pop();
         scene.remove(tail.mesh);
         // Remove mixer for this segment if it exists
-        snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== tail.mesh && m.model !== tail.mesh);
+        snakeMixers = snakeMixers.filter(m => m.container !== tail.mesh && m.model !== tail.mesh);
 
         // Update new tail geometry if realistic
         const currentSkin = SKINS.find(s => s.id === currentSkinId);
@@ -3063,7 +3071,7 @@ function update() {
             const lastSegment = snake[snake.length - 1];
             scene.remove(lastSegment.mesh);
             // Remove mixer for old tail
-            snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== lastSegment.mesh && m.model !== lastSegment.mesh);
+            snakeMixers = snakeMixers.filter(m => m.container !== lastSegment.mesh && m.model !== lastSegment.mesh);
             lastSegment.mesh = createSnakeMesh('tail', currentSkinId);
             lastSegment.mesh.position.copy(lastSegment.pos);
             scene.add(lastSegment.mesh);
@@ -3073,7 +3081,7 @@ function update() {
         const tail = snake.pop();
         scene.remove(tail.mesh);
         // Remove mixer for this segment if it exists
-        snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== tail.mesh && m.model !== tail.mesh);
+        snakeMixers = snakeMixers.filter(m => m.container !== tail.mesh && m.model !== tail.mesh);
 
         // Update new tail geometry if realistic
         const currentSkin = SKINS.find(s => s.id === currentSkinId);
@@ -3081,7 +3089,7 @@ function update() {
             const lastSegment = snake[snake.length - 1];
             scene.remove(lastSegment.mesh);
             // Remove mixer for old tail
-            snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== lastSegment.mesh && m.model !== lastSegment.mesh);
+            snakeMixers = snakeMixers.filter(m => m.container !== lastSegment.mesh && m.model !== lastSegment.mesh);
             lastSegment.mesh = createSnakeMesh('tail', currentSkinId);
             lastSegment.mesh.position.copy(lastSegment.pos);
             scene.add(lastSegment.mesh);
@@ -3099,7 +3107,7 @@ function update() {
             const oldHead = snake[0];
             scene.remove(oldHead.mesh);
             // Remove mixer for the old head group
-            snakeMixers = snakeMixers.filter(m => m.mixer.getRoot() !== oldHead.mesh && m.model !== oldHead.mesh);
+            snakeMixers = snakeMixers.filter(m => m.container !== oldHead.mesh && m.model !== oldHead.mesh);
             oldHead.mesh = createSnakeMesh('body', currentSkinId);
             oldHead.mesh.position.copy(oldHead.pos);
             scene.add(oldHead.mesh);
