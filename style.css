@@ -1249,6 +1249,47 @@ p {
         height: 150px;
     }
 
+    /* Mobile Advertisement Optimization */
+    .ad-container-bottom {
+        bottom: auto;
+        top: 10px;
+        left: auto;
+        right: 10px;
+        width: 120px;
+        border-width: 1px;
+        background: rgba(0, 0, 0, 0.9);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+        animation: adSlideDown 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        border-radius: 8px;
+    }
+
+    .ad-image {
+        border-radius: 7px;
+    }
+
+    .ad-label {
+        font-size: 0.5rem;
+        padding: 1px 4px;
+        border-bottom-left-radius: 4px;
+    }
+
+    @keyframes adSlideDown {
+        from { transform: translateY(-120%) scale(0.9); opacity: 0; }
+        to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    /* Prevent HUD overlap on very small screens */
+    #info {
+        padding: 0 130px 0 10px; /* Make room for ad on the right */
+        box-sizing: border-box;
+        text-align: left; /* Switch to left align to better utilize space */
+    }
+
+    .hud-controls {
+        justify-content: flex-start;
+    }
+}
+
     .skin-item, .bg-item {
         padding: 5px;
     }
